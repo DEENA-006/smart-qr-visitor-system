@@ -388,7 +388,7 @@ def serve_pass_photo(public_reference):
     if not req and not clean_ref.upper().startswith('REQ-'):
         abort(404)
 
-    if req.photo_filename:
+    if req and req.photo_filename:
         upload_dir = UploadService.get_upload_dir()
         file_path = os.path.join(upload_dir, req.photo_filename)
         if os.path.exists(file_path):
