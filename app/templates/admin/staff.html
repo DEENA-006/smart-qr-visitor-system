@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Staff Management{% endblock %}
+{% block page_heading %}Staff Accounts & Role Permissions{% endblock %}
+{% block page_subheading %}Manage institutional access, assign staff roles, and configure account status.{% endblock %}
+
+{% block content %}
+<!-- KPI Metrics -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-top">
+      <span class="kpi-label">Total Staff Accounts</span>
+      <div class="kpi-icon primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+    </div>
+    <div class="kpi-value">{{ kpis.total }}</div>
+    <span class="kpi-caption">Configured users</span>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-top">
+      <span class="kpi-label">Administrators</span>
+      <div class="kpi-icon danger">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+    </div>
+    <div class="kpi-value">{{ kpis.admins }}</div>
+    <span class="kpi-caption">Full system privileges</span>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-top">
+      <span class="kpi-label">Faculty / Hosts</span>
+      <div class="kpi-icon warning">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><polyline points="10 2 10 10 13 7 16 10 16 2"/></svg>
+      </div>
+    </div>
+    <div class="kpi-value">{{ kpis.faculty }}</div>
+    <span class="kpi-caption">Visit approvers</span>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-top">
+      <span class="kpi-label">Security Desk</span>
+      <div class="kpi-icon success">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+    </div>
+    <div class="kpi-value">{{ kpis.security }}</div>
+    <span class="kpi-caption">Gate operators</span>
+  </div>
+</div>
+
+<!-- Add Staff & Filters Layout -->
+<div style="display: grid; grid-template-columns: 1fr 340px; gap: var(--space-6); align-items: start;">
+  <!-- Left: Staff Table with Search/Filter -->
+  <div class="card">
+    <div class="card-header" style="flex-wrap: wrap; gap: var(--space-4);">
+      <div>
+        <h2 class="card-title">Configured Staff Accounts</h2>
+        <p class="card-subtitle">Active accounts authorized to access campus management panels</p>
+      </div>
+
+      <!-- Filters Form -->
+      <form method="GET" action="{{ url_for('admin.staff_list') }}" style="display:flex; gap:var(--space-2); flex-wrap:wrap;">
+        <input 
+          type="text" 
+          name="q" 
+          class="form-control" 
+          placeholder="Search name, user, dept..." 
+          value="{{ search_query or '' }}" 
+          style="width: 180px; padding: 6px 10px; font-size:13px;"
+        >
+        <select name="role" class="form-control" style="width: 120px; padding: 6px 10px; font-size:13px;">
+          <option value="">All Roles</option>
+          {% for r in roles %}
+            <option value="{{ r }}" {% if role_filter == r %}selected{% endif %}>{{ r }}</option>
+          {% endfor %}
+        </select>
+        <select name="status" class="form-control" style="width: 110px; padding: 6px 10px; font-size:13px;">
+          <option value="">All Status</option>
+          <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+          <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+        <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+        {% if search_query or role_filter or status_filter %}
+          <a href="{{ url_for('admin.staff_list') }}" class="btn btn-secondary btn-sm" title="Clear Filters">&times;</a>
+        {% endif %}
+      </form>
+    </div>
+
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Role</th>
+            <th>Department</th>
+            <th>Status</th>
+            <th>Last Login</th>
+            <th style="text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in staff_members %}
+            <tr>
+              <td>
+                <div style="display:flex; align-items:center; gap:var(--space-3);">
+                  <div class="avatar-badge" style="width:30px; height:30px; font-size:12px;">
+                    {{ user.full_name[:1] | upper }}
+                  </div>
+                  <div>
+                    <div style="font-weight:600; color:var(--color-text);">{{ user.full_name }}</div>
+                    <div style="font-size:12px; color:var(--color-text-muted);">@{{ user.username }}{% if user.email %} &bull; {{ user.email }}{% endif %}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                {% if user.role == 'ADMIN' %}
+                  <span class="badge badge-danger">ADMIN</span>
+                {% elif user.role == 'FACULTY' %}
+                  <span class="badge badge-warning">FACULTY</span>
+                {% else %}
+                  <span class="badge badge-success">SECURITY</span>
+                {% endif %}
+              </td>
+              <td style="color:var(--color-text-secondary);">
+                {{ user.department if user.department else '—' }}
+              </td>
+              <td>
+                {% if user.is_active %}
+                  <span class="badge badge-success">Active</span>
+                {% else %}
+                  <span class="badge badge-neutral">Inactive</span>
+                {% endif %}
+              </td>
+              <td style="font-size:12px; color:var(--color-text-muted); font-feature-settings:'tnum';">
+                {{ format_dt(user.last_login_at) }}
+              </td>
+              <td style="text-align:right;">
+                <div style="display:inline-flex; gap:var(--space-2);">
+                  <a href="{{ url_for('admin.staff_edit', user_id=user.id) }}" class="btn btn-secondary btn-sm" style="padding:4px 8px;" title="Edit account">
+                    Edit
+                  </a>
+                  {% if user.id != current_user.id %}
+                    <form action="{{ url_for('admin.staff_toggle', user_id=user.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Change active status for {{ user.username }}?');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button 
+                        type="submit" 
+                        class="btn btn-sm {% if user.is_active %}btn-danger{% else %}btn-secondary{% endif %}" 
+                        style="padding:4px 8px;"
+                      >
+                        {% if user.is_active %}Deactivate{% else %}Activate{% endif %}
+                      </button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="6" style="text-align:center; padding:var(--space-8); color:var(--color-text-muted);">
+                No staff members found matching criteria.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Right: Add Staff Member Form -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">Add Staff Member</h2>
+        <p class="card-subtitle">Create a new institutional staff account</p>
+      </div>
+    </div>
+
+    <form action="{{ url_for('admin.staff_list') }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="form-group">
+        <label class="form-label" for="full_name">Full Name *</label>
+        <input type="text" id="full_name" name="full_name" class="form-control" placeholder="e.g. Dr. Jane Smith" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="username">Username *</label>
+        <input type="text" id="username" name="username" class="form-control" placeholder="e.g. janesmith" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="email">Email Address</label>
+        <input type="email" id="email" name="email" class="form-control" placeholder="e.g. janesmith@campus.edu">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="role">Assigned Role *</label>
+        <select id="role" name="role" class="form-control" required>
+          <option value="FACULTY">Faculty / Host</option>
+          <option value="SECURITY">Security Desk</option>
+          <option value="ADMIN">Administrator</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="department">Department</label>
+        <input type="text" id="department" name="department" class="form-control" placeholder="e.g. Mechanical Engineering">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Initial Password *</label>
+        <input type="password" id="password" name="password" class="form-control" placeholder="Minimum 6 characters" required>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%; margin-top:var(--space-2);">
+        Create Staff Account
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

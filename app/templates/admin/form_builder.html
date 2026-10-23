@@ -1,0 +1,1678 @@
+{% extends "base.html" %}
+
+{% block title %}Form Builder: {{ form.name }} (v{{ version.version_number }}){% endblock %}
+{% block page_heading %}Form Schema Builder{% endblock %}
+{% block page_subheading %}Design and configure custom intake fields for {{ form.name }}.{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Form Builder Custom SaaS Styling */
+  .builder-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+
+  .builder-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 13px;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-2);
+  }
+
+  .builder-breadcrumbs a {
+    color: var(--color-text-secondary);
+    text-decoration: none;
+  }
+  .builder-breadcrumbs a:hover {
+    color: var(--color-primary);
+  }
+
+  .builder-title-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  .builder-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0;
+  }
+
+  .builder-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  /* Two Column Builder Layout */
+  .builder-layout {
+    display: grid;
+    grid-template-columns: 270px minmax(0, 1fr);
+    gap: var(--space-5);
+    align-items: start;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  @media (max-width: 1024px) {
+    .builder-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Sidebar Styles */
+  .sidebar-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .version-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .version-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: var(--color-text);
+    transition: all var(--transition-fast);
+  }
+
+  .version-item:hover {
+    background: var(--color-surface-hover);
+    border-color: var(--color-border-strong);
+    color: var(--color-text);
+  }
+
+  .version-item.active {
+    background: var(--color-primary-soft);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 1px var(--color-primary);
+  }
+
+  .version-num {
+    font-weight: 600;
+    font-size: 13.5px;
+  }
+
+  .version-date {
+    font-size: 11.5px;
+    color: var(--color-text-muted);
+  }
+
+  /* Tabs Styling — No Horizontal Scroll */
+  .builder-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-5);
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100%;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .builder-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 8px 14px;
+    border: none;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all var(--transition-fast);
+    white-space: normal;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    flex-shrink: 0;
+  }
+
+  .tab-btn:hover {
+    color: var(--color-primary);
+  }
+
+  .tab-btn.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    background: var(--color-surface);
+  }
+
+  .tab-content-panel {
+    display: none;
+  }
+
+  .tab-content-panel.active {
+    display: block;
+    animation: fadeIn 0.2s ease;
+  }
+
+  /* Visual Field Cards */
+  .field-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .field-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    transition: all var(--transition-fast);
+    position: relative;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    word-break: break-word;
+  }
+
+  .field-card:hover {
+    border-color: var(--color-border-strong);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .field-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+
+  .field-title-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .field-order-badge {
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-secondary);
+    border: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+    flex-shrink: 0;
+  }
+
+  .field-label-text {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--color-text);
+  }
+
+  .field-key-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    background: var(--color-surface-secondary);
+    color: var(--color-primary);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    word-break: break-all;
+    max-width: 100%;
+  }
+
+  .field-card-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-shrink: 0;
+  }
+
+  .field-card-meta {
+    font-size: 12.5px;
+    color: var(--color-text-secondary);
+    margin-top: var(--space-2);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .field-options-preview {
+    margin-top: var(--space-2);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+
+  .option-pill {
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-secondary);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    word-break: break-all;
+  }
+
+  .field-btn-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .field-btn-icon:hover {
+    background: var(--color-surface-secondary);
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+  }
+
+  .field-btn-icon.delete:hover {
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+    border-color: var(--color-danger);
+  }
+
+  /* Live Preview Simulator */
+  .preview-wrapper {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  .preview-banner {
+    background: var(--color-primary-soft);
+    border-left: 4px solid var(--color-primary);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: var(--color-primary);
+    margin-bottom: var(--space-5);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .preview-section-title {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: var(--space-5) 0 var(--space-3) 0;
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-4);
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .preview-grid.full-width {
+    grid-template-columns: 1fr;
+  }
+
+  /* Faculty Delegation Table */
+  .delegation-table {
+    width: 100%;
+    max-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: auto;
+    word-break: break-word;
+  }
+  .delegation-table th {
+    background: var(--color-surface-secondary);
+    padding: 10px 12px;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+    border-bottom: 1px solid var(--color-border);
+    text-align: left;
+    white-space: normal;
+  }
+  .delegation-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 13px;
+    color: var(--color-text);
+    white-space: normal;
+  }
+
+  /* Universal Horizontal Overflow Prevention for Builder */
+  .builder-layout *, .builder-layout *::before, .builder-layout *::after {
+    box-sizing: border-box;
+  }
+
+  .form-control, textarea, input, select {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- 1. Page Header & Action Bar -->
+<div class="builder-header">
+  <div>
+    <div class="builder-breadcrumbs">
+      <a href="{{ url_for('admin.forms_list') }}">Forms</a>
+      <span>/</span>
+      <span style="color:var(--color-text); font-weight:600;">{{ form.name }}</span>
+      <span>/</span>
+      <span>Version {{ version.version_number }}</span>
+    </div>
+
+    <div class="builder-title-row">
+      <h1 class="builder-title">{{ form.name }}</h1>
+      <span class="badge badge-primary">{{ form.visit_type }}</span>
+
+      {% if version.status == 'PUBLISHED' %}
+        <span class="badge badge-success">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          PUBLISHED (v{{ version.version_number }})
+        </span>
+      {% elif version.status == 'DRAFT' %}
+        <span class="badge badge-warning">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          DRAFT (v{{ version.version_number }})
+        </span>
+      {% else %}
+        <span class="badge badge-neutral">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect width="22" height="5" x="1" y="3"/><line x1="10" x2="14" y1="12" y2="12"/></svg>
+          ARCHIVED (v{{ version.version_number }})
+        </span>
+      {% endif %}
+    </div>
+    <p style="font-size:13px; color:var(--color-text-muted); margin-top:4px;">{{ form.description or 'No description provided.' }}</p>
+  </div>
+
+  <div class="builder-actions">
+    <a href="{{ url_for('admin.forms_list') }}" class="btn btn-secondary btn-sm" id="btn-back-forms">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Back to Forms
+    </a>
+
+    <a href="{{ url_for('admin.form_preview', form_id=form.id, version_id=version.id) }}" target="_blank" class="btn btn-secondary btn-sm" id="btn-preview-form">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      Preview Form
+    </a>
+
+    <button type="button" class="btn btn-primary btn-sm" id="btn-header-save">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Save Draft Schema
+    </button>
+
+    {% if version.status != 'PUBLISHED' %}
+      <button type="button" class="btn btn-primary btn-sm" id="btn-open-publish-modal" style="background:var(--color-success); border-color:var(--color-success);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        Publish Version {{ version.version_number }}
+      </button>
+
+      <!-- Accessible Keyboard-Operable Confirmation Modal -->
+      <dialog id="publishConfirmModal" class="custom-modal" aria-labelledby="publishModalTitle" aria-describedby="publishModalDesc" role="dialog" aria-modal="true">
+        <div class="modal-content-box">
+          <div class="modal-header">
+            <div class="modal-icon-warning">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </div>
+            <div style="flex:1;">
+              <h4 id="publishModalTitle" class="modal-title">Publish Version {{ version.version_number }}?</h4>
+              <p id="publishModalDesc" class="modal-subtitle">
+                This will activate Version {{ version.version_number }} as the live registration schema for <strong>{{ form.name }}</strong>.
+              </p>
+            </div>
+            <button type="button" class="modal-close-btn" id="btn-close-publish-modal" aria-label="Close dialog">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="modal-callout">
+              <strong>Notice:</strong> Publishing this version will atomically archive the currently active version. Existing visitor requests remain permanently linked to their historical version.
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="btn-cancel-publish-modal">Cancel</button>
+            <form action="{{ url_for('admin.form_publish', form_id=form.id, version_id=version.id) }}" method="POST" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-primary" id="btn-publish-version" style="background:var(--color-success); border-color:var(--color-success);">
+                Yes, Publish Version {{ version.version_number }}
+              </button>
+            </form>
+          </div>
+        </div>
+      </dialog>
+    {% else %}
+      <span class="badge badge-success" style="padding: 7px 12px; font-size: 13px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Currently Active
+      </span>
+      <form action="{{ url_for('admin.form_unpublish', form_id=form.id, version_id=version.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to unpublish this form? Visitors will no longer be able to submit registrations via this link until re-published.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-danger btn-sm" id="btn-unpublish-version">
+          Unpublish Form
+        </button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+
+{% if version.status == 'PUBLISHED' and form.public_token %}
+<!-- Shareable Public URL Box -->
+<div class="card" style="margin-bottom:var(--space-6); background:var(--color-primary-soft); border:1px solid var(--color-primary); padding:var(--space-4);">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--space-3);">
+    <div style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap;">
+      <div style="font-weight:700; color:var(--color-primary); font-size:14px; display:flex; align-items:center; gap:var(--space-2);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        Shareable Public Link:
+      </div>
+      <input type="text" id="publicFormUrl" readonly value="{{ public_form_url(form) }}" class="form-control" style="width:auto; min-width:320px; font-family:monospace; font-size:13px; background:var(--color-surface); display:inline-block;">
+      <button type="button" class="btn btn-primary btn-sm" id="btn-copy-public-link" onclick="navigator.clipboard.writeText(document.getElementById('publicFormUrl').value); const orig=this.innerHTML; this.innerHTML='Copied!'; setTimeout(()=>this.innerHTML=orig, 2000);">
+        Copy Public Link
+      </button>
+    </div>
+    <div style="display:flex; gap:var(--space-2);">
+      <a href="{{ public_form_url(form) }}" target="_blank" class="btn btn-secondary btn-sm" id="btn-open-live-form">
+        Open Form ↗
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- 2. Status Notice Alerts -->
+{% if version.status == 'PUBLISHED' %}
+<div class="alert alert-info" style="margin-bottom:var(--space-6);">
+  <div style="display:flex; align-items:center; gap:var(--space-3);">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    <div>
+      <strong>Published Live Version:</strong> This version is actively used for visitor intake. Any modifications saved below will automatically fork a <strong>new Draft version</strong> to preserve audit immutability for existing visitor submissions.
+    </div>
+  </div>
+</div>
+{% elif version.status == 'ARCHIVED' %}
+<div class="alert alert-warning" style="margin-bottom:var(--space-6);">
+  <div style="display:flex; align-items:center; gap:var(--space-3);">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect width="22" height="5" x="1" y="3"/><line x1="10" x2="14" y1="12" y2="12"/></svg>
+    <div>
+      <strong>Archived Historical Version:</strong> This version is read-only. Saving modifications will automatically branch a new Draft version based on this schema.
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info" style="margin-bottom:var(--space-6);">
+  <div style="display:flex; align-items:center; gap:var(--space-3);">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    <div>
+      <strong>Draft Mode:</strong> You are editing an unpublished draft. Add, edit, or reorder fields visually below, test the live visitor experience in the <strong>Live Preview</strong> tab, and publish when ready.
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div style="margin-bottom: var(--space-3);">
+  <button type="button" class="btn btn-outline btn-xs" id="openBuilderSideBtn" onclick="toggleBuilderSidePanel()" style="display:none; align-items:center; gap:6px;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><line x1="9" x2="9" y1="3" y2="21"/></svg>
+    Show Sidebar Panel
+  </button>
+</div>
+
+<!-- 3. Two-Column Builder Layout -->
+<div class="builder-layout">
+  <!-- Left Column: Version History & Meta -->
+  <div class="sidebar-section">
+    <!-- Version History Card -->
+    <div class="card">
+      <div class="card-header" style="margin-bottom:var(--space-3); display:flex; justify-content:space-between; align-items:center;">
+        <h2 class="card-title" style="font-size:15px; margin:0;">Version History</h2>
+        <button type="button" class="btn btn-outline btn-xs" id="closeBuilderSideBtn" onclick="toggleBuilderSidePanel()" title="Close side panel" style="padding: 2px 7px; font-size: 11px;">
+          &times; Close
+        </button>
+      </div>
+      <div class="version-list">
+        {% for v in form.versions|sort(attribute='version_number', reverse=True) %}
+          <a href="{{ url_for('admin.form_builder', form_id=form.id, version_id=v.id) }}"
+             class="version-item {% if v.id == version.id %}active{% endif %}">
+            <div>
+              <div class="version-num">Version {{ v.version_number }}</div>
+              <div class="version-date">{{ v.created_at.strftime('%b %d, %Y') if v.created_at else '' }}</div>
+            </div>
+            <div>
+              {% if v.status == 'PUBLISHED' %}
+                <span class="badge badge-success">Live</span>
+              {% elif v.status == 'DRAFT' %}
+                <span class="badge badge-warning">Draft</span>
+              {% else %}
+                <span class="badge badge-neutral">Archived</span>
+              {% endif %}
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Form Configuration Summary Card -->
+    <div class="card">
+      <div class="card-header" style="margin-bottom:var(--space-3);">
+        <h2 class="card-title" style="font-size:15px;">Form Attributes</h2>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:var(--space-3); font-size:13px;">
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--color-text-secondary);">Visit Category</span>
+          <span class="badge badge-primary">{{ form.visit_type }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--color-text-secondary);">Faculty Customization</span>
+          {% if form.allow_faculty_customization %}
+            <span class="badge badge-success">Enabled</span>
+          {% else %}
+            <span class="badge badge-neutral">Disabled</span>
+          {% endif %}
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--color-text-secondary);">Dynamic Fields</span>
+          <span style="font-weight:600;" id="sidebar-field-count">{{ schema|length }} fields</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Allowed Field Types Reference -->
+    <div class="card">
+      <div class="card-header" style="margin-bottom:var(--space-3);">
+        <h2 class="card-title" style="font-size:15px;">Supported Types</h2>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:var(--space-2); font-size:12.5px;">
+        <div style="display:flex; align-items:center; gap:var(--space-2);">
+          <code style="color:var(--color-primary); font-weight:600;">text</code>
+          <span style="color:var(--color-text-muted);">Single-line text input</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:var(--space-2);">
+          <code style="color:var(--color-primary); font-weight:600;">textarea</code>
+          <span style="color:var(--color-text-muted);">Multi-line narrative</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:var(--space-2);">
+          <code style="color:var(--color-primary); font-weight:600;">select</code>
+          <span style="color:var(--color-text-muted);">Dropdown selection</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:var(--space-2);">
+          <code style="color:var(--color-primary); font-weight:600;">tel</code>
+          <span style="color:var(--color-text-muted);">Phone / Mobile number</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:var(--space-2);">
+          <code style="color:var(--color-primary); font-weight:600;">email</code>
+          <span style="color:var(--color-text-muted);">Email address</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:var(--space-2);">
+          <code style="color:var(--color-primary); font-weight:600;">date</code>
+          <span style="color:var(--color-text-muted);">Calendar date</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:var(--space-2);">
+          <code style="color:var(--color-primary); font-weight:600;">time</code>
+          <span style="color:var(--color-text-muted);">Time selector</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:var(--space-2);">
+          <code style="color:var(--color-primary); font-weight:600;">checkbox</code>
+          <span style="color:var(--color-text-muted);">Confirmation toggle</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:var(--space-2);">
+          <code style="color:var(--color-primary); font-weight:600;">image</code>
+          <span style="color:var(--color-text-muted);">Image / Photo upload</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Interactive Visual Form Builder -->
+  <div class="card" style="padding:var(--space-6);">
+    <!-- Tab Navigation Bar -->
+    <div class="builder-tabs" role="tablist">
+      <button type="button" class="tab-btn active" id="tab-visual" data-target="#view-visual" role="tab" aria-selected="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Visual Overview
+      </button>
+      <button type="button" class="tab-btn" id="tab-preview" data-target="#view-preview" role="tab" aria-selected="false">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        Live Form Preview
+      </button>
+      <button type="button" class="tab-btn" id="tab-permissions" data-target="#view-permissions" role="tab" aria-selected="false">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Faculty Permissions
+      </button>
+      <button type="button" class="tab-btn" id="tab-json" data-target="#view-json" role="tab" aria-selected="false">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        Schema JSON (Advanced)
+      </button>
+    </div>
+
+    <!-- Main Submission Form -->
+    <form action="{{ url_for('admin.form_save', form_id=form.id, version_id=version.id) }}" method="POST" id="schema-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <!-- ==========================================
+           TAB 1: VISUAL FIELD BUILDER
+           ========================================== -->
+      <div class="tab-content-panel active" id="view-visual" role="tabpanel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-4); flex-wrap:wrap; gap:var(--space-3);">
+          <div>
+            <h2 style="font-size:16px; font-weight:700; color:var(--color-text); margin:0;" id="visual-header-title">
+              Defined Form Fields ({{ schema|length }})
+            </h2>
+            <p style="font-size:13px; color:var(--color-text-muted); margin:2px 0 0 0;">
+              Visually add, customize, and reorder intake fields without manually writing JSON.
+            </p>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-add-field">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            + Add Field
+          </button>
+        </div>
+
+        <!-- Rendered Field Cards Container -->
+        <div class="field-list" id="field-cards-container">
+          <!-- Populated dynamically via JS -->
+        </div>
+
+        <!-- Empty State Container -->
+        <div id="field-empty-state" style="display:none; text-align:center; padding:var(--space-10) var(--space-4); background:var(--color-surface-secondary); border:1px dashed var(--color-border-strong); border-radius:var(--radius-lg);">
+          <div style="width:48px; height:48px; border-radius:50%; background:var(--color-primary-soft); color:var(--color-primary); display:flex; align-items:center; justify-content:center; margin:0 auto var(--space-3) auto;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          </div>
+          <h3 style="font-size:16px; font-weight:700; color:var(--color-text); margin-bottom:var(--space-1);">No Custom Fields Defined Yet</h3>
+          <p style="font-size:13px; color:var(--color-text-muted); max-width:400px; margin:0 auto var(--space-4) auto;">
+            Click the "+ Add Field" button above to introduce intake questions for registering visitors.
+          </p>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-add-field-empty">
+            + Add First Field
+          </button>
+        </div>
+      </div>
+
+      <!-- ==========================================
+           TAB 2: LIVE FORM PREVIEW
+           ========================================== -->
+      <div class="tab-content-panel" id="view-preview" role="tabpanel">
+        <div class="preview-wrapper">
+          <div class="preview-banner">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <div>
+              <strong>Live Simulated Preview:</strong> This interactive simulator renders your exact field schema as visitors see it during registration.
+            </div>
+          </div>
+
+          <!-- Fixed Visitor Fields Simulation -->
+          <div class="preview-section-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Standard Visitor Details (System Fixed)
+          </div>
+          <div class="preview-grid" style="margin-bottom:var(--space-6);">
+            <div class="form-group">
+              <label class="form-label">Full Legal Name <span style="color:var(--color-danger);">*</span></label>
+              <input type="text" class="form-control" value="Jane Doe (Simulated)" disabled style="background:var(--color-surface-secondary); opacity:0.8;">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email Address <span style="color:var(--color-danger);">*</span></label>
+              <input type="email" class="form-control" value="jane.doe@example.com" disabled style="background:var(--color-surface-secondary); opacity:0.8;">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone Number <span style="color:var(--color-danger);">*</span></label>
+              <input type="tel" class="form-control" value="+1 (555) 234-5678" disabled style="background:var(--color-surface-secondary); opacity:0.8;">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Primary Purpose of Visit <span style="color:var(--color-danger);">*</span></label>
+              <input type="text" class="form-control" value="Research Seminar" disabled style="background:var(--color-surface-secondary); opacity:0.8;">
+            </div>
+          </div>
+
+          <!-- Dynamic Fields Preview Area -->
+          <div class="preview-section-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/></svg>
+            Category Specific Details ({{ form.name }})
+          </div>
+
+          <div id="preview-dynamic-fields-container" class="preview-grid full-width">
+            <!-- Populated dynamically via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ==========================================
+           TAB 3: FACULTY PERMISSIONS
+           ========================================== -->
+      <div class="tab-content-panel" id="view-permissions" role="tabpanel">
+        <div style="margin-bottom:var(--space-4);">
+          <h2 style="font-size:16px; font-weight:700; color:var(--color-text); margin:0;">Faculty Delegation Permissions Matrix</h2>
+          <p style="font-size:13px; color:var(--color-text-muted); margin:4px 0 0 0;">
+            Define which properties faculty hosts may modify when hosting visits under this category.
+            Security-critical properties (<strong>Field Key</strong>, <strong>Field Type</strong>, and <strong>Required Status</strong>) are strictly locked to preserve audit integrity.
+          </p>
+        </div>
+
+        {% if not form.allow_faculty_customization %}
+        <div class="alert alert-warning" style="margin-bottom:var(--space-4);">
+          Faculty customization is currently disabled on this Form Template. Enable "Allow Faculty Customization" in the Form Settings to activate host delegations.
+        </div>
+        {% endif %}
+
+        <div class="table-container" style="border:1px solid var(--color-border); overflow-x:hidden; width:100%; max-width:100%;">
+          <table class="delegation-table">
+            <thead>
+              <tr>
+                <th style="width:30%;">Field</th>
+                <th style="text-align:center;">Allow Label Customization</th>
+                <th style="text-align:center;">Allow Help Text Customization</th>
+                <th style="text-align:center;">Allow Options Customization</th>
+                <th style="text-align:center;">Enforced Security Constraints</th>
+              </tr>
+            </thead>
+            <tbody id="permissions-table-body">
+              <!-- Populated dynamically via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ==========================================
+           TAB 4: SCHEMA JSON (ADVANCED)
+           ========================================== -->
+      <div class="tab-content-panel" id="view-json" role="tabpanel">
+        <div style="margin-bottom:var(--space-4); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--space-2);">
+          <div>
+            <h2 style="font-size:16px; font-weight:700; color:var(--color-text); margin:0;">Advanced JSON Editor</h2>
+            <p style="font-size:13px; color:var(--color-text-muted); margin:2px 0 0 0;">
+              Directly edit raw JSON schemas. Switching tabs or clicking "Format JSON" automatically synchronizes the Visual Builder.
+            </p>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-format-json">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+            Format / Validate JSON
+          </button>
+        </div>
+
+        <div class="form-group">
+          <label for="schema_json" class="form-label" style="font-weight:700;">
+            Schema Specification (JSON Array)
+          </label>
+          <textarea class="form-control" id="schema_json" name="schema_json" rows="14"
+                    style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:13px; line-height:1.45;">{{ schema_json_pretty }}</textarea>
+          <p style="font-size:12px; color:var(--color-text-muted); margin-top:4px;">
+            Required attributes per field: <code>field_key</code>, <code>label</code> (or <code>field_label</code>), <code>field_type</code>, <code>is_required</code>.
+          </p>
+        </div>
+
+        <div class="form-group" style="margin-top:var(--space-5);">
+          <label for="faculty_permissions_json" class="form-label" style="font-weight:700;">
+            Faculty Permitted Customization (JSON Object)
+          </label>
+          <textarea class="form-control" id="faculty_permissions_json" name="faculty_permissions_json" rows="8"
+                    style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:13px; line-height:1.45;">{{ faculty_permissions_pretty }}</textarea>
+          <p style="font-size:12px; color:var(--color-text-muted); margin-top:4px;">
+            Dictionary mapping field keys to allowed properties: e.g. <code>{"purpose_detail": ["label", "help_text"]}</code>.
+          </p>
+        </div>
+      </div>
+
+      <!-- Action Buttons Footer -->
+      <div style="margin-top:var(--space-6); padding-top:var(--space-5); border-top:1px solid var(--color-border); display:flex; justify-content:flex-end; gap:var(--space-3);">
+        <button type="submit" class="btn btn-primary" id="btn-save-schema">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save Draft Schema
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ==========================================
+     VISUAL ADD / EDIT FIELD MODAL DIALOG
+     ========================================== -->
+<dialog id="fieldModal" class="custom-modal" aria-labelledby="fieldModalTitle" role="dialog" aria-modal="true">
+  <div class="modal-content-box">
+    <div class="modal-header">
+      <div class="modal-icon-warning" style="background:var(--color-primary-soft); color:var(--color-primary);">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/>
+          <line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+      </div>
+      <div style="flex:1;">
+        <h3 id="fieldModalTitle" class="modal-title">Configure Form Field</h3>
+        <p class="modal-subtitle">Add or edit dynamic visitor intake attributes.</p>
+      </div>
+      <button type="button" class="modal-close-btn" id="btn-close-field-modal" aria-label="Close dialog">&times;</button>
+    </div>
+
+    <div class="modal-body" style="display:flex; flex-direction:column; gap:var(--space-4);">
+      <input type="hidden" id="modal-field-index" value="-1">
+
+      <div class="form-group" style="margin-bottom:0;">
+        <label for="modal-field-label" class="form-label">Field Label (Visible to Visitor) <span style="color:var(--color-danger);">*</span></label>
+        <input type="text" id="modal-field-label" class="form-control" placeholder="e.g., Vehicle Registration Number" required>
+      </div>
+
+      <div class="form-group" style="margin-bottom:0;">
+        <label for="modal-field-key" class="form-label">Database Field Key <span style="color:var(--color-danger);">*</span></label>
+        <input type="text" id="modal-field-key" class="form-control" placeholder="e.g., vehicle_number" required pattern="[a-z0-9_]{2,32}">
+        <p style="font-size:11.5px; color:var(--color-text-muted); margin-top:2px;">
+          Must contain only lowercase letters, numbers, and underscores (2-32 characters).
+        </p>
+      </div>
+
+      <div class="form-group" style="margin-bottom:0;">
+        <label for="modal-field-type" class="form-label">Field Input Type <span style="color:var(--color-danger);">*</span></label>
+        <select id="modal-field-type" class="form-control">
+          <option value="text">Single-line Text (text)</option>
+          <option value="textarea">Multi-line Paragraph (textarea)</option>
+          <option value="select">Dropdown Selection List (select)</option>
+          <option value="tel">Telephone / Mobile Number (tel)</option>
+          <option value="email">Email Address (email)</option>
+          <option value="date">Calendar Date Picker (date)</option>
+          <option value="time">Time Picker (time)</option>
+          <option value="checkbox">Yes / No Confirmation Checkbox (checkbox)</option>
+          <option value="image">Image / Photo Upload (image)</option>
+        </select>
+      </div>
+
+      <!-- Dropdown Options (visible only if type == 'select') -->
+      <div class="form-group" id="modal-options-group" style="display:none; margin-bottom:0;">
+        <label for="modal-field-options" class="form-label">Dropdown Choices (One per line) <span style="color:var(--color-danger);">*</span></label>
+        <textarea id="modal-field-options" class="form-control" rows="3" placeholder="Two Wheeler&#10;Four Wheeler&#10;Official Campus Bus"></textarea>
+      </div>
+
+      <div class="form-group" style="margin-bottom:0;">
+        <label for="modal-field-help" class="form-label">Visitor Help Text / Instructions</label>
+        <input type="text" id="modal-field-help" class="form-control" placeholder="e.g., Please enter your vehicle number for gate security pass">
+      </div>
+
+      <div style="display:flex; align-items:center; gap:var(--space-2); margin-top:var(--space-1);">
+        <input type="checkbox" id="modal-field-required" style="width:16px; height:16px; cursor:pointer;">
+        <label for="modal-field-required" style="font-size:13.5px; font-weight:600; cursor:pointer;">
+          Mandatory response (Required field)
+        </label>
+      </div>
+
+      <!-- Faculty Customization Checkboxes -->
+      {% if form.allow_faculty_customization %}
+      <div style="background:var(--color-surface-secondary); padding:var(--space-3) var(--space-4); border-radius:var(--radius-md); border:1px solid var(--color-border); margin-top:var(--space-2);">
+        <div style="font-weight:700; font-size:12.5px; color:var(--color-text); margin-bottom:var(--space-2);">
+          Faculty Delegation Privileges
+        </div>
+        <div style="display:flex; flex-direction:column; gap:var(--space-2); font-size:12.5px;">
+          <label style="display:flex; align-items:center; gap:var(--space-2); cursor:pointer;">
+            <input type="checkbox" id="modal-perm-label" style="cursor:pointer;">
+            <span>Allow faculty host to customize Label</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:var(--space-2); cursor:pointer;">
+            <input type="checkbox" id="modal-perm-help" style="cursor:pointer;">
+            <span>Allow faculty host to customize Help Text</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:var(--space-2); cursor:pointer;" id="modal-perm-options-wrapper">
+            <input type="checkbox" id="modal-perm-options" style="cursor:pointer;">
+            <span>Allow faculty host to customize Dropdown Options</span>
+          </label>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" id="btn-cancel-field-modal">Cancel</button>
+      <button type="button" class="btn btn-primary" id="btn-save-modal-field">Save Field to Schema</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Client Script for Interactive Form Builder Engine -->
+<script>
+(function() {
+  'use strict';
+
+  // 1. Initial Data State parsed safely from server Jinja context
+  let schema = [];
+  let facultyPerms = {};
+
+  try {
+    const rawSchema = document.getElementById('schema_json').value;
+    schema = rawSchema ? JSON.parse(rawSchema) : [];
+  } catch(e) {
+    console.error("Failed to parse initial schema JSON:", e);
+    schema = [];
+  }
+
+  try {
+    const rawPerms = document.getElementById('faculty_permissions_json').value;
+    facultyPerms = rawPerms ? JSON.parse(rawPerms) : {};
+  } catch(e) {
+    console.error("Failed to parse initial faculty perms JSON:", e);
+    facultyPerms = {};
+  }
+
+  // 2. DOM Elements
+  const cardsContainer = document.getElementById('field-cards-container');
+  const emptyState = document.getElementById('field-empty-state');
+  const previewContainer = document.getElementById('preview-dynamic-fields-container');
+  const permsTableBody = document.getElementById('permissions-table-body');
+  const schemaTextarea = document.getElementById('schema_json');
+  const permsTextarea = document.getElementById('faculty_permissions_json');
+  const headerFieldCount = document.getElementById('visual-header-title');
+  const sidebarFieldCount = document.getElementById('sidebar-field-count');
+
+  // Modal elements
+  const fieldModal = document.getElementById('fieldModal');
+  const modalTitle = document.getElementById('fieldModalTitle');
+  const modalIndex = document.getElementById('modal-field-index');
+  const modalLabel = document.getElementById('modal-field-label');
+  const modalKey = document.getElementById('modal-field-key');
+  const modalType = document.getElementById('modal-field-type');
+  const modalHelp = document.getElementById('modal-field-help');
+  const modalReq = document.getElementById('modal-field-required');
+  const modalOptions = document.getElementById('modal-field-options');
+  const modalOptionsGroup = document.getElementById('modal-options-group');
+  const modalPermLabel = document.getElementById('modal-perm-label');
+  const modalPermHelp = document.getElementById('modal-perm-help');
+  const modalPermOptions = document.getElementById('modal-perm-options');
+  const modalPermOptionsWrapper = document.getElementById('modal-perm-options-wrapper');
+
+  // Type change helper
+  function onTypeChange() {
+    const isSelect = modalType.value === 'select';
+    modalOptionsGroup.style.display = isSelect ? 'block' : 'none';
+    if (modalPermOptionsWrapper) {
+      modalPermOptionsWrapper.style.display = isSelect ? 'flex' : 'none';
+    }
+  }
+  modalType.addEventListener('change', onTypeChange);
+
+  // Auto-slugify label to key if adding new field
+  modalLabel.addEventListener('input', function() {
+    if (modalIndex.value === '-1') {
+      const slug = modalLabel.value
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 32);
+      modalKey.value = slug;
+    }
+  });
+
+  // 3. Tab Switching Engine
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  const tabPanels = document.querySelectorAll('.tab-content-panel');
+
+  function switchTab(targetSelector) {
+    tabButtons.forEach(btn => {
+      const isTarget = btn.getAttribute('data-target') === targetSelector;
+      btn.classList.toggle('active', isTarget);
+      btn.setAttribute('aria-selected', isTarget ? 'true' : 'false');
+    });
+
+    tabPanels.forEach(panel => {
+      const isTarget = ('#' + panel.id) === targetSelector;
+      panel.classList.toggle('active', isTarget);
+    });
+
+    if (targetSelector === '#view-visual') {
+      renderVisualBuilder();
+    } else if (targetSelector === '#view-preview') {
+      renderLivePreview();
+    } else if (targetSelector === '#view-permissions') {
+      renderPermissionsMatrix();
+    } else if (targetSelector === '#view-json') {
+      syncStateToTextareas();
+    }
+  }
+
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', function() {
+      // If leaving JSON view, sync back to memory first
+      if (document.getElementById('view-json').classList.contains('active')) {
+        syncTextareasToState();
+      }
+      switchTab(this.getAttribute('data-target'));
+    });
+  });
+
+  // 4. Synchronization Functions
+  function syncStateToTextareas() {
+    schemaTextarea.value = JSON.stringify(schema, null, 2);
+    permsTextarea.value = JSON.stringify(facultyPerms, null, 2);
+    if (headerFieldCount) headerFieldCount.textContent = `Defined Form Fields (${schema.length})`;
+    if (sidebarFieldCount) sidebarFieldCount.textContent = `${schema.length} fields`;
+  }
+
+  function syncTextareasToState() {
+    try {
+      const parsedSchema = JSON.parse(schemaTextarea.value || '[]');
+      if (Array.isArray(parsedSchema)) {
+        schema = parsedSchema;
+      }
+    } catch (e) {
+      alert("Notice: Schema JSON has syntax errors and could not be loaded into the visual builder: " + e.message);
+    }
+
+    try {
+      const parsedPerms = JSON.parse(permsTextarea.value || '{}');
+      if (typeof parsedPerms === 'object') {
+        facultyPerms = parsedPerms;
+      }
+    } catch (e) {
+      console.warn("Could not parse faculty permissions JSON:", e);
+    }
+
+    renderVisualBuilder();
+    renderLivePreview();
+    renderPermissionsMatrix();
+  }
+
+  // 5. Render Visual Field Cards
+  function renderVisualBuilder() {
+    if (!cardsContainer) return;
+    cardsContainer.innerHTML = '';
+
+    if (!schema || schema.length === 0) {
+      cardsContainer.style.display = 'none';
+      if (emptyState) emptyState.style.display = 'block';
+      syncStateToTextareas();
+      return;
+    }
+
+    cardsContainer.style.display = 'flex';
+    if (emptyState) emptyState.style.display = 'none';
+
+    schema.forEach((field, idx) => {
+      const card = document.createElement('div');
+      card.className = 'field-card';
+
+      const key = field.field_key || '';
+      const label = field.field_label || field.label || key;
+      const type = field.field_type || 'text';
+      const isReq = !!field.is_required;
+      const help = field.help_text || '';
+      const options = Array.isArray(field.options) ? field.options : [];
+
+      // Determine faculty perms for badge
+      let permList = [];
+      if (facultyPerms && facultyPerms[key]) {
+        const val = facultyPerms[key];
+        if (Array.isArray(val)) {
+          permList = val;
+        } else if (typeof val === 'object' && Array.isArray(val.allowed_properties)) {
+          permList = val.allowed_properties;
+        }
+      }
+
+      let optionsHtml = '';
+      if (type === 'select' && options.length > 0) {
+        optionsHtml = `
+          <div class="field-options-preview">
+            <span style="font-size:11.5px; color:var(--color-text-muted); font-weight:600;">Options:</span>
+            ${options.map(opt => `<span class="option-pill">${escapeHtml(opt)}</span>`).join('')}
+          </div>
+        `;
+      }
+
+      let permsBadge = '';
+      if (permList.length > 0) {
+        permsBadge = `<span class="badge badge-primary" style="font-size:11px;">Faculty customizes: ${permList.join(', ')}</span>`;
+      }
+
+      card.innerHTML = `
+        <div class="field-card-header">
+          <div class="field-title-group">
+            <div class="field-order-badge">#${idx + 1}</div>
+            <div class="field-label-text">${escapeHtml(label)}</div>
+            <code class="field-key-code">${escapeHtml(key)}</code>
+            <span class="badge badge-neutral" style="text-transform:uppercase; font-size:10.5px;">${type}</span>
+            ${isReq ? '<span class="badge badge-danger">Required</span>' : '<span class="badge badge-neutral">Optional</span>'}
+            ${permsBadge}
+          </div>
+
+          <div class="field-card-actions">
+            <button type="button" class="field-btn-icon" data-action="up" data-idx="${idx}" title="Move Up" ${idx === 0 ? 'disabled style="opacity:0.4; cursor:default;"' : ''}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            <button type="button" class="field-btn-icon" data-action="down" data-idx="${idx}" title="Move Down" ${idx === schema.length - 1 ? 'disabled style="opacity:0.4; cursor:default;"' : ''}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <button type="button" class="field-btn-icon" data-action="edit" data-idx="${idx}" title="Edit Field">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button type="button" class="field-btn-icon delete" data-action="delete" data-idx="${idx}" title="Delete Field">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        ${help ? `<div style="font-size:12.5px; color:var(--color-text-secondary); margin-top:2px;">${escapeHtml(help)}</div>` : ''}
+        ${optionsHtml}
+      `;
+
+      cardsContainer.appendChild(card);
+    });
+
+    syncStateToTextareas();
+  }
+
+  // Helper to escape HTML characters
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // 6. Event Delegation for Field Card Actions
+  if (cardsContainer) {
+    cardsContainer.addEventListener('click', function(e) {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const action = btn.getAttribute('data-action');
+      const idx = parseInt(btn.getAttribute('data-idx'), 10);
+
+      if (action === 'up' && idx > 0) {
+        const temp = schema[idx];
+        schema[idx] = schema[idx - 1];
+        schema[idx - 1] = temp;
+        renderVisualBuilder();
+      } else if (action === 'down' && idx < schema.length - 1) {
+        const temp = schema[idx];
+        schema[idx] = schema[idx + 1];
+        schema[idx + 1] = temp;
+        renderVisualBuilder();
+      } else if (action === 'edit') {
+        openEditModal(idx);
+      } else if (action === 'delete') {
+        if (confirm(`Are you sure you want to delete field "${schema[idx].field_label || schema[idx].field_key}"?`)) {
+          const removed = schema.splice(idx, 1)[0];
+          if (removed && facultyPerms && facultyPerms[removed.field_key]) {
+            delete facultyPerms[removed.field_key];
+          }
+          renderVisualBuilder();
+        }
+      }
+    });
+  }
+
+  // 7. Modal Handlers
+  function openAddModal() {
+    modalTitle.textContent = "Add New Form Field";
+    modalIndex.value = "-1";
+    modalLabel.value = "";
+    modalKey.value = "";
+    modalType.value = "text";
+    modalHelp.value = "";
+    modalReq.checked = false;
+    modalOptions.value = "";
+    if (modalPermLabel) modalPermLabel.checked = false;
+    if (modalPermHelp) modalPermHelp.checked = false;
+    if (modalPermOptions) modalPermOptions.checked = false;
+    onTypeChange();
+    showModal(fieldModal);
+    setTimeout(() => modalLabel.focus(), 50);
+  }
+
+  function openEditModal(idx) {
+    const field = schema[idx];
+    if (!field) return;
+
+    modalTitle.textContent = "Edit Form Field: " + (field.field_label || field.field_key);
+    modalIndex.value = String(idx);
+    modalLabel.value = field.field_label || field.label || "";
+    modalKey.value = field.field_key || "";
+    modalType.value = field.field_type || "text";
+    modalHelp.value = field.help_text || "";
+    modalReq.checked = !!field.is_required;
+    modalOptions.value = Array.isArray(field.options) ? field.options.join('\n') : "";
+
+    // Set permission checkboxes
+    const key = field.field_key;
+    let allowed = [];
+    if (facultyPerms && facultyPerms[key]) {
+      const entry = facultyPerms[key];
+      allowed = Array.isArray(entry) ? entry : (entry.allowed_properties || []);
+    }
+    if (modalPermLabel) modalPermLabel.checked = allowed.includes('label') || allowed.includes('field_label');
+    if (modalPermHelp) modalPermHelp.checked = allowed.includes('help_text');
+    if (modalPermOptions) modalPermOptions.checked = allowed.includes('options');
+
+    onTypeChange();
+    showModal(fieldModal);
+    setTimeout(() => modalLabel.focus(), 50);
+  }
+
+  function showModal(dlg) {
+    if (!dlg) return;
+    if (typeof dlg.showModal === 'function') {
+      dlg.showModal();
+    } else {
+      dlg.setAttribute('open', '');
+    }
+  }
+
+  function closeModal(dlg) {
+    if (!dlg) return;
+    if (typeof dlg.close === 'function') {
+      dlg.close();
+    } else {
+      dlg.removeAttribute('open');
+    }
+  }
+
+  // Modal Buttons
+  const btnAddField = document.getElementById('btn-add-field');
+  const btnAddFieldEmpty = document.getElementById('btn-add-field-empty');
+  const btnCloseFieldModal = document.getElementById('btn-close-field-modal');
+  const btnCancelFieldModal = document.getElementById('btn-cancel-field-modal');
+  const btnSaveModalField = document.getElementById('btn-save-modal-field');
+
+  if (btnAddField) btnAddField.addEventListener('click', openAddModal);
+  if (btnAddFieldEmpty) btnAddFieldEmpty.addEventListener('click', openAddModal);
+  if (btnCloseFieldModal) btnCloseFieldModal.addEventListener('click', () => closeModal(fieldModal));
+  if (btnCancelFieldModal) btnCancelFieldModal.addEventListener('click', () => closeModal(fieldModal));
+
+  if (btnSaveModalField) {
+    btnSaveModalField.addEventListener('click', function() {
+      const idx = parseInt(modalIndex.value, 10);
+      const label = modalLabel.value.trim();
+      const rawKey = modalKey.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+      const type = modalType.value;
+      const help = modalHelp.value.trim();
+      const isReq = modalReq.checked;
+
+      if (!label) {
+        alert("Please enter a visible field label.");
+        modalLabel.focus();
+        return;
+      }
+
+      if (!rawKey || !/^[a-z0-9_]{2,32}$/.test(rawKey)) {
+        alert("Field key must be 2-32 characters of lowercase letters, numbers, and underscores (e.g. vehicle_number).");
+        modalKey.focus();
+        return;
+      }
+
+      // Check duplicates
+      const dup = schema.find((f, i) => f.field_key === rawKey && i !== idx);
+      if (dup) {
+        alert(`Field key '${rawKey}' is already used by another field. Keys must be unique.`);
+        modalKey.focus();
+        return;
+      }
+
+      let optionsList = [];
+      if (type === 'select') {
+        optionsList = modalOptions.value
+          .split('\n')
+          .map(s => s.trim())
+          .filter(s => s.length > 0);
+
+        if (optionsList.length === 0) {
+          alert("Dropdown fields require at least one option. Please enter options separated by line breaks.");
+          modalOptions.focus();
+          return;
+        }
+      }
+
+      const fieldObj = {
+        field_key: rawKey,
+        field_label: label,
+        label: label,
+        field_type: type,
+        is_required: isReq,
+        help_text: help,
+        options: optionsList
+      };
+
+      if (idx === -1) {
+        schema.push(fieldObj);
+      } else {
+        const oldKey = schema[idx].field_key;
+        schema[idx] = fieldObj;
+        if (oldKey !== rawKey && facultyPerms && facultyPerms[oldKey]) {
+          facultyPerms[rawKey] = facultyPerms[oldKey];
+          delete facultyPerms[oldKey];
+        }
+      }
+
+      // Sync faculty permissions for this field
+      if (modalPermLabel) {
+        const allowedProps = [];
+        if (modalPermLabel.checked) allowedProps.push('label');
+        if (modalPermHelp && modalPermHelp.checked) allowedProps.push('help_text');
+        if (modalPermOptions && modalPermOptions.checked && type === 'select') allowedProps.push('options');
+
+        if (allowedProps.length > 0) {
+          facultyPerms[rawKey] = {
+            field_key: rawKey,
+            allowed_properties: allowedProps,
+            forbidden_properties: ["field_key", "field_type", "is_required"]
+          };
+        } else {
+          if (facultyPerms && facultyPerms[rawKey]) {
+            delete facultyPerms[rawKey];
+          }
+        }
+      }
+
+      closeModal(fieldModal);
+      renderVisualBuilder();
+    });
+  }
+
+  // 8. Render Live Preview Simulator
+  function renderLivePreview() {
+    if (!previewContainer) return;
+    previewContainer.innerHTML = '';
+
+    if (!schema || schema.length === 0) {
+      previewContainer.innerHTML = `
+        <div style="text-align:center; padding:var(--space-6); color:var(--color-text-muted);">
+          No dynamic custom fields configured for this category yet.
+        </div>
+      `;
+      return;
+    }
+
+    schema.forEach(field => {
+      const key = field.field_key || '';
+      const label = field.field_label || field.label || key;
+      const type = field.field_type || 'text';
+      const isReq = !!field.is_required;
+      const help = field.help_text || '';
+      const options = Array.isArray(field.options) ? field.options : [];
+
+      const formGroup = document.createElement('div');
+      formGroup.className = 'form-group';
+      formGroup.style.marginBottom = 'var(--space-4)';
+
+      let inputHtml = '';
+      if (type === 'textarea') {
+        inputHtml = `<textarea class="form-control" rows="3" placeholder="Enter ${escapeHtml(label)}..." ${isReq ? 'required' : ''}></textarea>`;
+      } else if (type === 'select') {
+        inputHtml = `
+          <select class="form-control" ${isReq ? 'required' : ''}>
+            <option value="" disabled selected>— Select an option —</option>
+            ${options.map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
+          </select>
+        `;
+      } else if (type === 'checkbox') {
+        inputHtml = `
+          <div style="display:flex; align-items:center; gap:var(--space-2); margin-top:var(--space-1);">
+            <input type="checkbox" id="prev_${escapeHtml(key)}" style="width:16px; height:16px; cursor:pointer;" ${isReq ? 'required' : ''}>
+            <label for="prev_${escapeHtml(key)}" style="font-size:13.5px; cursor:pointer; color:var(--color-text);">I confirm / check</label>
+          </div>
+        `;
+      } else if (type === 'image' || type === 'file') {
+        inputHtml = `
+          <div style="border: 2px dashed var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); text-align: center; background: var(--color-surface-secondary);">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: var(--space-2); color: var(--color-text-muted);"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+            <div style="font-size: 13px; font-weight: 600; color: var(--color-text);">Upload image file</div>
+            <div style="font-size: 11.5px; color: var(--color-text-muted); margin-top: 2px;">Supported: JPG, PNG, WEBP (Max 5MB)</div>
+          </div>
+        `;
+      } else {
+        inputHtml = `<input type="${type}" class="form-control" placeholder="Enter ${escapeHtml(label)}..." ${isReq ? 'required' : ''}>`;
+      }
+
+      formGroup.innerHTML = `
+        <label class="form-label" style="font-weight:600;">
+          ${escapeHtml(label)}
+          ${isReq ? '<span style="color:var(--color-danger); font-weight:700;">*</span>' : '<span style="font-size:11.5px; font-weight:normal; color:var(--color-text-muted);">(Optional)</span>'}
+        </label>
+        ${inputHtml}
+        ${help ? `<div style="font-size:12px; color:var(--color-text-muted); margin-top:4px;">${escapeHtml(help)}</div>` : ''}
+      `;
+
+      previewContainer.appendChild(formGroup);
+    });
+  }
+
+  // 9. Render Faculty Delegation Matrix
+  function renderPermissionsMatrix() {
+    if (!permsTableBody) return;
+    permsTableBody.innerHTML = '';
+
+    if (!schema || schema.length === 0) {
+      permsTableBody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align:center; padding:var(--space-6); color:var(--color-text-muted);">
+            No dynamic fields in schema. Add fields in the Visual Builder tab first.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    schema.forEach(field => {
+      const key = field.field_key || '';
+      const label = field.field_label || field.label || key;
+      const type = field.field_type || 'text';
+
+      let allowed = [];
+      if (facultyPerms && facultyPerms[key]) {
+        const entry = facultyPerms[key];
+        allowed = Array.isArray(entry) ? entry : (entry.allowed_properties || []);
+      }
+
+      const canLabel = allowed.includes('label') || allowed.includes('field_label');
+      const canHelp = allowed.includes('help_text');
+      const canOptions = allowed.includes('options');
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <div style="font-weight:600; color:var(--color-text);">${escapeHtml(label)}</div>
+          <code style="font-size:11.5px; color:var(--color-primary);">${escapeHtml(key)}</code>
+          <span class="badge badge-neutral" style="font-size:10px; margin-left:4px;">${type}</span>
+        </td>
+        <td style="text-align:center;">
+          <input type="checkbox" data-perm-key="${escapeHtml(key)}" data-prop="label" ${canLabel ? 'checked' : ''} style="cursor:pointer; width:16px; height:16px;">
+        </td>
+        <td style="text-align:center;">
+          <input type="checkbox" data-perm-key="${escapeHtml(key)}" data-prop="help_text" ${canHelp ? 'checked' : ''} style="cursor:pointer; width:16px; height:16px;">
+        </td>
+        <td style="text-align:center;">
+          ${type === 'select'
+            ? `<input type="checkbox" data-perm-key="${escapeHtml(key)}" data-prop="options" ${canOptions ? 'checked' : ''} style="cursor:pointer; width:16px; height:16px;">`
+            : '<span style="color:var(--color-text-muted); font-size:12px;">N/A</span>'}
+        </td>
+        <td style="text-align:center;">
+          <span class="badge badge-neutral" style="font-size:11px;">Key, Type & Required Locked</span>
+        </td>
+      `;
+
+      permsTableBody.appendChild(tr);
+    });
+  }
+
+  // Update permissions on table checkbox change
+  if (permsTableBody) {
+    permsTableBody.addEventListener('change', function(e) {
+      const target = e.target;
+      if (target.type !== 'checkbox') return;
+
+      const key = target.getAttribute('data-perm-key');
+      const prop = target.getAttribute('data-prop');
+      if (!key || !prop) return;
+
+      if (!facultyPerms[key]) {
+        facultyPerms[key] = {
+          field_key: key,
+          allowed_properties: [],
+          forbidden_properties: ["field_key", "field_type", "is_required"]
+        };
+      }
+
+      let arr = Array.isArray(facultyPerms[key]) ? facultyPerms[key] : facultyPerms[key].allowed_properties;
+      if (!Array.isArray(arr)) arr = [];
+
+      if (target.checked) {
+        if (!arr.includes(prop)) arr.push(prop);
+      } else {
+        arr = arr.filter(p => p !== prop && p !== (prop === 'label' ? 'field_label' : ''));
+      }
+
+      if (Array.isArray(facultyPerms[key])) {
+        facultyPerms[key] = arr;
+      } else {
+        facultyPerms[key].allowed_properties = arr;
+      }
+
+      syncStateToTextareas();
+    });
+  }
+
+  // 10. Format JSON Button
+  const btnFormatJson = document.getElementById('btn-format-json');
+  if (btnFormatJson) {
+    btnFormatJson.addEventListener('click', function() {
+      try {
+        const curSchema = JSON.parse(schemaTextarea.value || '[]');
+        schemaTextarea.value = JSON.stringify(curSchema, null, 2);
+      } catch (err) {
+        alert("Schema JSON format error: " + err.message);
+        return;
+      }
+
+      try {
+        if (permsTextarea.value.trim()) {
+          const curPerms = JSON.parse(permsTextarea.value || '{}');
+          permsTextarea.value = JSON.stringify(curPerms, null, 2);
+        }
+      } catch (err) {
+        alert("Faculty Permissions JSON format error: " + err.message);
+        return;
+      }
+
+      syncTextareasToState();
+      alert("JSON formatted and validated successfully!");
+    });
+  }
+
+  // 11. Header Save Shortcut
+  const btnHeaderSave = document.getElementById('btn-header-save');
+  const mainForm = document.getElementById('schema-form');
+  if (btnHeaderSave && mainForm) {
+    btnHeaderSave.addEventListener('click', function() {
+      syncStateToTextareas();
+      mainForm.submit();
+    });
+  }
+
+  if (mainForm) {
+    mainForm.addEventListener('submit', function() {
+      syncStateToTextareas();
+    });
+  }
+
+  // 12. Accessible Publish Modal
+  const publishModal = document.getElementById('publishConfirmModal');
+  const btnOpenPublish = document.getElementById('btn-open-publish-modal');
+  const btnClosePublish = document.getElementById('btn-close-publish-modal');
+  const btnCancelPublish = document.getElementById('btn-cancel-publish-modal');
+
+  if (btnOpenPublish && publishModal) {
+    btnOpenPublish.addEventListener('click', () => {
+      showModal(publishModal);
+      if (btnCancelPublish) btnCancelPublish.focus();
+    });
+    if (btnClosePublish) btnClosePublish.addEventListener('click', () => closeModal(publishModal));
+    if (btnCancelPublish) btnCancelPublish.addEventListener('click', () => closeModal(publishModal));
+
+    publishModal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeModal(publishModal);
+      }
+    });
+
+    publishModal.addEventListener('click', (e) => {
+      const rect = publishModal.getBoundingClientRect();
+      const isInDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
+                          rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+      if (!isInDialog) closeModal(publishModal);
+    });
+  }
+
+  // Initial render on DOM load
+  renderVisualBuilder();
+  renderLivePreview();
+  renderPermissionsMatrix();
+})();
+
+function toggleBuilderSidePanel() {
+  const panel = document.querySelector('.sidebar-section');
+  const layout = document.querySelector('.builder-layout');
+  const openBtn = document.getElementById('openBuilderSideBtn');
+  if (!panel || !layout) return;
+  if (panel.style.display === 'none') {
+    panel.style.display = 'flex';
+    layout.style.gridTemplateColumns = '320px 1fr';
+    if (openBtn) openBtn.style.display = 'none';
+  } else {
+    panel.style.display = 'none';
+    layout.style.gridTemplateColumns = '1fr';
+    if (openBtn) openBtn.style.display = 'inline-flex';
+  }
+}
+</script>
+{% endblock %}

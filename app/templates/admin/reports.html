@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+
+{% block title %}Visitor Analytics & Reports — {{ app_name }}{% endblock %}
+{% block page_heading %}Campus Visitor Analytics & Reports{% endblock %}
+{% block page_subheading %}Authoritative operational data, historical visit logs, and formula-injection-safe CSV exports.{% endblock %}
+
+{% block content %}
+<!-- Metric Summary Cards -->
+<div class="kpi-grid" style="margin-bottom: var(--space-6);">
+  <div class="kpi-card">
+    <div class="kpi-top">
+      <span class="kpi-label">Total Visit Requests</span>
+      <div class="kpi-icon primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>
+    </div>
+    <div class="kpi-value">{{ summary.total_requests }}</div>
+    <span class="kpi-caption">{{ summary.approved_visits }} approved &middot; {{ summary.rejected_visits }} rejected</span>
+  </div>
+
+  <div class="kpi-card" style="border-top: 3px solid var(--color-success);">
+    <div class="kpi-top">
+      <span class="kpi-label">Currently On Campus</span>
+      <div class="kpi-icon success">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+    </div>
+    <div class="kpi-value">{{ summary.currently_on_campus }}</div>
+    <span class="kpi-caption">Active verified sessions</span>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-top">
+      <span class="kpi-label">Checked-In Admissions</span>
+      <div class="kpi-icon primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+    </div>
+    <div class="kpi-value">{{ summary.total_checked_in }}</div>
+    <span class="kpi-caption">{{ summary.completed_visits }} completed departures</span>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-top">
+      <span class="kpi-label">Overstay / Stale Visitors</span>
+      <div class="kpi-icon warning">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+      </div>
+    </div>
+    <div class="kpi-value">{{ summary.overstay_visitors }}</div>
+    <span class="kpi-caption">&gt;12h without departure</span>
+  </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="card" style="padding: var(--space-5); margin-bottom: var(--space-6);">
+  <form method="GET" action="{{ url_for('admin.reports') }}">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-4); align-items: flex-end;">
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label" for="startDate">From Date</label>
+        <input type="date" id="startDate" name="start_date" class="form-control" value="{{ selected_start }}">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label" for="endDate">To Date</label>
+        <input type="date" id="endDate" name="end_date" class="form-control" value="{{ selected_end }}">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label" for="statusFilter">Request Status</label>
+        <select id="statusFilter" name="status" class="form-control">
+          <option value="">All Statuses</option>
+          <option value="PENDING_APPROVAL" {% if selected_status == 'PENDING_APPROVAL' %}selected{% endif %}>Pending Approval</option>
+          <option value="APPROVED" {% if selected_status == 'APPROVED' %}selected{% endif %}>Approved</option>
+          <option value="REJECTED" {% if selected_status == 'REJECTED' %}selected{% endif %}>Rejected</option>
+          <option value="CANCELLED" {% if selected_status == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
+          <option value="EXPIRED" {% if selected_status == 'EXPIRED' %}selected{% endif %}>Expired</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label" for="typeFilter">Category</label>
+        <select id="typeFilter" name="visit_type" class="form-control">
+          <option value="">All Categories</option>
+          {% for vt in visit_types %}
+            <option value="{{ vt }}" {% if selected_visit_type == vt %}selected{% endif %}>{{ vt }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label" for="hostFilter">Host Staff</label>
+        <select id="hostFilter" name="host_id" class="form-control">
+          <option value="">All Staff</option>
+          {% for h in hosts %}
+            <option value="{{ h.id }}" {% if selected_host_id == h.id %}selected{% endif %}>{{ h.full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label" for="sessionFilter">Gate Session</label>
+        <select id="sessionFilter" name="session_status" class="form-control">
+          <option value="">All Sessions</option>
+          <option value="ACTIVE" {% if selected_session_status == 'ACTIVE' %}selected{% endif %}>Currently Checked In</option>
+          <option value="COMPLETED" {% if selected_session_status == 'COMPLETED' %}selected{% endif %}>Completed Departures</option>
+          <option value="NOT_ADMITTED" {% if selected_session_status == 'NOT_ADMITTED' %}selected{% endif %}>Never Admitted</option>
+        </select>
+      </div>
+
+      <div style="display: flex; gap: var(--space-2);">
+        <button type="submit" class="btn btn-primary" style="flex: 1;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          Filter
+        </button>
+        <a href="{{ url_for('admin.reports') }}" class="btn btn-outline" title="Reset Filters">
+          Reset
+        </a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Category Distribution Badges -->
+{% if summary.category_counts %}
+  <div style="display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-6); align-items: center;">
+    <span style="font-size: 12.5px; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase;">Category Breakdown:</span>
+    {% for cat, count in summary.category_counts.items() %}
+      <span class="badge badge-secondary" style="font-size: 12px; padding: 4px 8px;">
+        {{ cat }}: <strong>{{ count }}</strong>
+      </span>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<!-- Results Table Card -->
+<div class="card" style="padding: 0; overflow: hidden; margin-bottom: var(--space-8);">
+  <div style="padding: var(--space-5) var(--space-6); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h3 style="font-size: 16px; font-weight: 700; color: var(--color-text); margin: 0;">Filtered Visit Records ({{ visits.total }})</h3>
+      <p style="font-size: 13px; color: var(--color-text-muted); margin: 2px 0 0 0;">Showing page {{ visits.page }} of {{ visits.pages or 1 }}</p>
+    </div>
+    <div>
+      <a href="{{ url_for('admin.reports_export_csv', start_date=selected_start, end_date=selected_end, status=selected_status, visit_type=selected_visit_type, host_id=selected_host_id, session_status=selected_session_status) }}" class="btn btn-outline btn-sm">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+        Export Safe CSV
+      </a>
+    </div>
+  </div>
+
+  {% if visits.items %}
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Reference Code</th>
+            <th>Visitor</th>
+            <th>Category</th>
+            <th>Host & Dept</th>
+            <th>Request Status</th>
+            <th>Gate Status</th>
+            <th>Submitted</th>
+            <th>Latest Session</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for req in visits.items %}
+            {% set sess = req.sessions.first() %}
+            <tr>
+              <td><code>{{ req.public_reference }}</code></td>
+              <td>
+                <strong style="color: var(--color-text);">{{ req.visitor.full_name if req.visitor else 'Unknown' }}</strong>
+                {% if req.visitor and req.visitor.organization %}
+                  <div style="font-size: 11px; color: var(--color-text-muted);">{{ req.visitor.organization }}</div>
+                {% endif %}
+              </td>
+              <td><span class="badge badge-info">{{ req.visit_type }}</span></td>
+              <td>
+                <div>{{ req.host_user.full_name if req.host_user else 'General Desk' }}</div>
+                <div style="font-size: 11px; color: var(--color-text-muted);">{{ req.department or (req.host_user.department if req.host_user else '') }}</div>
+              </td>
+              <td>
+                {% if req.status == 'APPROVED' %}
+                  <span class="badge badge-success">Approved</span>
+                {% elif req.status == 'PENDING_APPROVAL' %}
+                  <span class="badge badge-warning">Pending</span>
+                {% elif req.status == 'REJECTED' %}
+                  <span class="badge badge-danger">Rejected</span>
+                {% else %}
+                  <span class="badge badge-secondary">{{ req.status }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if sess %}
+                  {% if sess.status == 'ACTIVE' %}
+                    <span class="badge badge-success">On Campus</span>
+                  {% else %}
+                    <span class="badge badge-secondary">Departed</span>
+                  {% endif %}
+                {% else %}
+                  <span style="font-size: 12px; color: var(--color-text-muted);">Not Admitted</span>
+                {% endif %}
+              </td>
+              <td>{{ format_dt(req.submitted_at, '%d %b %Y') }}</td>
+              <td>
+                {% if sess %}
+                  <div style="font-size: 12px;">In: {{ format_dt(sess.checked_in_at, '%d %b, %I:%M %p') }}</div>
+                  {% if sess.checked_out_at %}
+                    <div style="font-size: 11.5px; color: var(--color-text-muted);">Out: {{ format_dt(sess.checked_out_at, '%d %b, %I:%M %p') }}</div>
+                  {% endif %}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td style="text-align: right;">
+                {% if sess %}
+                  <button type="button" class="btn btn-outline btn-xs" 
+                          onclick="openSessionModal('{{ sess.id }}', '{{ req.public_reference }}', '{{ (req.visitor.full_name if req.visitor else 'Visitor')|replace('\'', '\\\'') }}', '{{ sess.status }}', '{{ to_local_input_dt(sess.checked_in_at) }}', '{{ to_local_input_dt(sess.checked_out_at) }}');" 
+                          title="Edit check-in and check-out details" 
+                          style="font-size: 11.5px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    Edit
+                  </button>
+                {% else %}
+                  <span style="color: var(--color-text-muted); font-size: 11.5px;">—</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if visits.pages > 1 %}
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-4) var(--space-6); border-top: 1px solid var(--color-border);">
+        <span style="font-size: 13px; color: var(--color-text-muted);">Showing page {{ visits.page }} of {{ visits.pages }}</span>
+        <div style="display: flex; gap: var(--space-2);">
+          {% if visits.has_prev %}
+            <a href="{{ url_for('admin.reports', page=visits.prev_num, start_date=selected_start, end_date=selected_end, status=selected_status, visit_type=selected_visit_type, host_id=selected_host_id, session_status=selected_session_status) }}" class="btn btn-outline btn-sm">&larr; Previous</a>
+          {% endif %}
+          {% if visits.has_next %}
+            <a href="{{ url_for('admin.reports', page=visits.next_num, start_date=selected_start, end_date=selected_end, status=selected_status, visit_type=selected_visit_type, host_id=selected_host_id, session_status=selected_session_status) }}" class="btn btn-outline btn-sm">Next &rarr;</a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  {% else %}
+    <div style="padding: var(--space-12); text-align: center; color: var(--color-text-muted);">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: var(--space-3); opacity: 0.4;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <h4 style="font-size: 16px; font-weight: 700; color: var(--color-text); margin-bottom: 4px;">No Matching Visit Records</h4>
+      <p style="font-size: 13.5px; max-width: 400px; margin: 0 auto;">No records matched your filter criteria. Try expanding the date range or clearing specific filter parameters.</p>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Accessible Edit Check-In / Check-Out Session Modal -->
+<dialog id="editSessionModal" class="custom-modal" aria-labelledby="editSessionTitle">
+  <div class="modal-content-box" style="max-width: 520px;">
+    <div class="modal-header">
+      <div class="modal-icon-warning" style="background: var(--color-primary-soft); color: var(--color-primary);">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </div>
+      <div style="flex: 1; text-align: left;">
+        <h4 id="editSessionTitle" class="modal-title">Edit Check-In / Check-Out Details</h4>
+        <p class="modal-subtitle">
+          Visitor: <strong id="modalVisitorName">Visitor</strong> (<span id="modalReferenceCode">REF</span>)
+        </p>
+      </div>
+      <button type="button" class="modal-close-btn" onclick="document.getElementById('editSessionModal').close();" aria-label="Close dialog">&times;</button>
+    </div>
+    <form id="editSessionForm" method="POST" action="">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="redirect_to" value="{{ request.full_path }}">
+      <div class="modal-body" style="text-align: left; display: flex; flex-direction: column; gap: var(--space-4);">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="modalSessionStatus" class="form-label" style="font-weight: 600;">Gate Session Status <span style="color: var(--color-danger);">*</span></label>
+          <select id="modalSessionStatus" name="status" class="form-control" required onchange="toggleModalCheckout(this.value)">
+            <option value="ACTIVE">ACTIVE (Visitor Currently on Campus)</option>
+            <option value="COMPLETED">COMPLETED (Visitor Departed)</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="modalCheckedInAt" class="form-label" style="font-weight: 600;">Check-In Timestamp <span style="color: var(--color-danger);">*</span></label>
+          <input type="datetime-local" id="modalCheckedInAt" name="checked_in_at" class="form-control" required>
+          <small style="color: var(--color-text-muted); font-size: 11.5px;">Authoritative recorded arrival time.</small>
+        </div>
+
+        <div class="form-group" id="checkoutGroup" style="margin-bottom: 0;">
+          <label for="modalCheckedOutAt" class="form-label" style="font-weight: 600;">Check-Out Timestamp <span style="color: var(--color-danger);" id="checkoutRequiredStar">*</span></label>
+          <input type="datetime-local" id="modalCheckedOutAt" name="checked_out_at" class="form-control">
+          <small style="color: var(--color-text-muted); font-size: 11.5px;">Authoritative departure timestamp (required if completed).</small>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="modalReason" class="form-label" style="font-weight: 600;">Reason for Administrative Correction <span style="color: var(--color-danger);">*</span></label>
+          <textarea id="modalReason" name="reason" rows="2" maxlength="255" class="form-control" required placeholder="e.g. Adjusted checkout time due to delay in security terminal logging."></textarea>
+          <small style="color: var(--color-text-muted); font-size: 11.5px;">Recorded permanently in security compliance audit logs.</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('editSessionModal').close();">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-save-session-edit">Save Changes & Audit</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<script>
+function openSessionModal(sessionId, refCode, visitorName, status, inDt, outDt) {
+  const form = document.getElementById('editSessionForm');
+  form.action = '/admin/sessions/' + sessionId + '/edit';
+  document.getElementById('modalVisitorName').textContent = visitorName;
+  document.getElementById('modalReferenceCode').textContent = refCode;
+  
+  const statusSelect = document.getElementById('modalSessionStatus');
+  statusSelect.value = status;
+  
+  document.getElementById('modalCheckedInAt').value = inDt || '';
+  document.getElementById('modalCheckedOutAt').value = outDt || '';
+  document.getElementById('modalReason').value = '';
+  
+  toggleModalCheckout(status);
+  document.getElementById('editSessionModal').showModal();
+}
+
+function toggleModalCheckout(status) {
+  const checkoutInput = document.getElementById('modalCheckedOutAt');
+  const star = document.getElementById('checkoutRequiredStar');
+  if (status === 'ACTIVE') {
+    checkoutInput.required = false;
+    star.style.display = 'none';
+  } else {
+    checkoutInput.required = true;
+    star.style.display = 'inline';
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Dynamic Form Builder{% endblock %}
+{% block page_heading %}Dynamic Visitor Registration Form Manager{% endblock %}
+{% block page_subheading %}Design, version, and publish custom intake forms for distinct visit categories.{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 1fr 340px; gap: var(--space-6); align-items: start;">
+  <!-- Left: Configured Forms List -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">Configured Registration Forms</h2>
+        <p class="card-subtitle">Active and archived visitor registration categories</p>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Form Name</th>
+            <th>Visit Category</th>
+            <th>Published Version</th>
+            <th>Faculty Permitted</th>
+            <th>Status</th>
+            <th style="text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for form in forms %}
+            {% set pub_ver = form.published_version %}
+            <tr>
+              <td>
+                <div style="font-weight:600; color:var(--color-text);">{{ form.name }}</div>
+                <div style="font-size:12px; color:var(--color-text-muted);">{{ form.description or 'No description provided' }}</div>
+              </td>
+              <td>
+                <span class="badge badge-primary">{{ form.visit_type }}</span>
+              </td>
+              <td>
+                {% if pub_ver %}
+                  <span class="badge badge-success">v{{ pub_ver.version_number }} (Active)</span>
+                {% else %}
+                  <span class="badge badge-warning">Drafts Only (Unpublished)</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if form.allow_faculty_customization %}
+                  <span class="badge badge-success">Enabled</span>
+                {% else %}
+                  <span class="badge badge-neutral">Disabled</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if form.is_active %}
+                  <span class="badge badge-success">Active</span>
+                {% else %}
+                  <span class="badge badge-neutral">Inactive</span>
+                {% endif %}
+              </td>
+              <td style="text-align:right;">
+                <div style="display:inline-flex; gap:6px; align-items:center;">
+                  {% if pub_ver and form.public_token %}
+                    <a href="{{ public_form_url(form) }}" target="_blank" class="btn btn-outline-primary btn-sm" style="padding:4px 8px;" title="Open Public Registration Form">
+                      Link ↗
+                    </a>
+                  {% endif %}
+                  {% set latest_ver = form.versions.first() %}
+                  {% if latest_ver %}
+                    <a href="{{ url_for('admin.form_builder', form_id=form.id, version_id=latest_ver.id) }}" class="btn btn-secondary btn-sm" style="padding:4px 8px;">
+                      Open Builder &rarr;
+                    </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="6" style="text-align:center; padding:var(--space-8); color:var(--color-text-muted);">
+                No registration forms created yet. Create your first visit category form on the right.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Right: Create Form Panel -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">New Form Category</h2>
+        <p class="card-subtitle">Define visit intake workflow</p>
+      </div>
+    </div>
+
+    <form action="{{ url_for('admin.forms_list') }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="form-group">
+        <label class="form-label" for="name">Form Name *</label>
+        <input type="text" id="name" name="name" class="form-control" placeholder="e.g. Campus Academic Visit Form" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="visit_type">Visit Category *</label>
+        <select id="visit_type" name="visit_type" class="form-control" required>
+          {% for vt in visit_types %}
+            <option value="{{ vt }}">{{ vt }}</option>
+          {% endfor %}
+        </select>
+        <small style="color:var(--color-text-muted); font-size:11.5px;">Each category can have one active published form version.</small>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="description">Description</label>
+        <textarea id="description" name="description" class="form-control" rows="2" placeholder="Internal notes or visitor instructions"></textarea>
+      </div>
+
+      <div class="form-group" style="margin-top:var(--space-2);">
+        <label style="display:flex; align-items:flex-start; gap:8px; font-weight:500; font-size:13px; cursor:pointer;">
+          <input type="checkbox" name="allow_faculty_customization" value="1" style="margin-top:3px;">
+          <span>Allow Faculty Customization (Delegates property-level field customization to departmental hosts)</span>
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%; margin-top:var(--space-4);">
+        Create Form &amp; Open Builder
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

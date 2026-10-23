@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Sign In — {{ app_name }}</title>
+  <meta name="description" content="Sign in to the Smart QR Visitor Management System">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+  <div class="auth-page">
+    <!-- Left Hero Panel (Desktop) -->
+    <div class="auth-hero-panel">
+      <div class="hero-branding">
+        <div class="hero-brand-mark">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+        </div>
+        <span class="hero-title">{{ full_app_name }}</span>
+      </div>
+
+      <div class="hero-body">
+        <h2>A smarter, safer way to manage campus access.</h2>
+        <p>Replace paper registers with end-to-end digital registration, encrypted QR verification, passport-photo comparison, and live campus occupancy tracking.</p>
+
+        <div class="hero-feature-list">
+          <div class="hero-feature-item">
+            <div class="feature-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <span>Visit-specific, tamper-resistant QR credentials</span>
+          </div>
+          <div class="hero-feature-item">
+            <div class="feature-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <span>Mandatory security photo comparison before check-in</span>
+          </div>
+          <div class="hero-feature-item">
+            <div class="feature-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <span>Real-time occupancy metrics & complete audit trails</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-footer">
+        <span>&copy; {{ now.year }} {{ app_name }}. Built for institutional safety.</span>
+      </div>
+    </div>
+
+    <!-- Right Form Panel -->
+    <div class="auth-form-panel">
+      <div class="auth-form-box">
+        <div class="auth-form-header">
+          <h1>Staff Sign In</h1>
+          <p>Enter your institutional credentials to access your workspace.</p>
+        </div>
+
+        <!-- Flashed Alerts -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="alerts-container">
+              {% for category, message in messages %}
+                <div class="alert alert-{{ category if category != 'error' else 'danger' }}">
+                  <span>{{ message }}</span>
+                  <button type="button" class="alert-close" aria-label="Close alert">&times;</button>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('auth.login', next=next) }}" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="form-group">
+            <label for="identifier" class="form-label">Username or Email</label>
+            <input 
+              type="text" 
+              id="identifier" 
+              name="identifier" 
+              class="form-control" 
+              placeholder="e.g. admin or faculty@campus.edu" 
+              value="{{ identifier if identifier else '' }}" 
+              required 
+              autofocus
+              autocomplete="username"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="password" class="form-label">Password</label>
+            <div class="input-with-icon">
+              <input 
+                type="password" 
+                id="password" 
+                name="password" 
+                class="form-control" 
+                placeholder="••••••••••••" 
+                required
+                autocomplete="current-password"
+              >
+              <button type="button" class="input-icon-btn toggle-password-btn" aria-label="Show password">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: var(--space-4);">
+            Sign in to Workspace
+          </button>
+        </form>
+
+        <!-- Development Quick-Fill helper -->
+        <div class="demo-accounts-card">
+          <div class="demo-title">Development Demo Accounts</div>
+          <p style="font-size:12px; color:var(--color-text-muted); margin-bottom:8px;">
+            Click any staff role below to autofill test credentials:
+          </p>
+          <div class="demo-role-btns">
+            <button type="button" class="demo-btn" onclick="fillDemoAccount('admin', 'Admin@123')">
+              Admin (admin)
+            </button>
+            <button type="button" class="demo-btn" onclick="fillDemoAccount('faculty', 'Faculty@123')">
+              Faculty (faculty)
+            </button>
+            <button type="button" class="demo-btn" onclick="fillDemoAccount('security', 'Security@123')">
+              Security (security)
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="h3 mb-1">Registration Forms & Customization</h2>
+            <p class="text-muted small mb-0">View campus visitor forms and configure allowed department preferences.</p>
+        </div>
+        <a href="{{ url_for('faculty.dashboard') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Workspace
+        </a>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white border-bottom py-3">
+        <h5 class="card-title mb-0 fw-semibold">Available Customizable Forms</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Form Name</th>
+                    <th>Visit Type</th>
+                    <th>Current Version</th>
+                    <th>Customization Permission</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if forms %}
+                    {% for form in forms %}
+                    <tr>
+                        <td>
+                            <div class="fw-bold">{{ form.name }}</div>
+                            <small class="text-muted">{{ form.description or 'No description' }}</small>
+                        </td>
+                        <td><span class="badge bg-primary text-uppercase">{{ form.visit_type }}</span></td>
+                        <td>
+                            {% if form.published_version %}
+                            <span class="badge bg-success">v{{ form.published_version.version_number }} (Live)</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Draft</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-success-subtle text-success border">
+                                <i class="bi bi-sliders me-1"></i>Customization Enabled
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('faculty.form_customize', form_id=form.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil-square me-1"></i>Customize Preferences
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 text-muted"></i>
+                            <p class="mt-2 mb-0">No registration forms are currently open for faculty customization.</p>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

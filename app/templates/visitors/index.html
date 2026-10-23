@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="py-4">
+    <div class="text-center max-w-700 mx-auto mb-4">
+        <span class="badge bg-primary-subtle text-primary border px-3 py-2 rounded-pill mb-2">Campus Access Portal</span>
+        <h1 class="display-6 fw-bold">Visitor Registration</h1>
+        <p class="text-muted">Select your visit category to begin your registration. Your request will be securely routed to your campus host for rapid verification.</p>
+    </div>
+
+    <!-- Offline Saved Pass Banner from Local Storage -->
+    <div id="local-pass-banner" class="card shadow-sm mb-4 mx-auto d-none" style="max-width: 700px; background: var(--color-surface); border-left: 4px solid var(--color-primary); border-radius: var(--radius-md);">
+      <div class="card-body p-3 d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <div id="local-pass-qr-thumb" style="width: 44px; height: 44px; border-radius: 6px; border: 1px solid var(--color-border); overflow: hidden; background: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/></svg>
+          </div>
+          <div>
+            <div style="font-size: 11px; font-weight: 700; color: var(--color-primary); text-transform: uppercase;">Saved on this Device (Local Storage)</div>
+            <strong id="local-pass-visitor-name" style="font-size: 14px; color: var(--color-text);">Visitor Pass</strong>
+            <span id="local-pass-ref" style="font-family: monospace; font-size: 12px; color: var(--color-text-secondary); margin-left: 6px;">—</span>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <a id="local-pass-view-link" href="#" class="btn btn-primary btn-sm px-3" style="white-space: nowrap;">
+            Open Saved Pass &rarr;
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4 justify-content-center">
+        <!-- GENERAL -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm border-0 border-top border-4 border-primary hover-shadow">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge bg-primary text-uppercase">General</span>
+                        <i class="bi bi-people fs-4 text-primary"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">General Campus Visitor</h5>
+                    <p class="card-text text-muted small flex-grow-1">Prospective students, family members, alumni, or general public visitors visiting campus departments or facilities.</p>
+                    <a href="{{ url_for('visitors.register_form', visit_type='GENERAL') }}" class="btn btn-outline-primary w-100 mt-3">
+                        Register as General Visitor <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ACADEMIC -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm border-0 border-top border-4 border-info hover-shadow">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge bg-info text-dark text-uppercase">Academic</span>
+                        <i class="bi bi-mortarboard fs-4 text-info"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Academic & Seminar Guest</h5>
+                    <p class="card-text text-muted small flex-grow-1">Guest lecturers, visiting professors, workshop speakers, seminar presenters, and academic collaborators.</p>
+                    <a href="{{ url_for('visitors.register_form', visit_type='ACADEMIC') }}" class="btn btn-outline-info w-100 mt-3">
+                        Register Academic Guest <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- OFFICIAL -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm border-0 border-top border-4 border-success hover-shadow">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge bg-success text-uppercase">Official</span>
+                        <i class="bi bi-building-check fs-4 text-success"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Official College Business</h5>
+                    <p class="card-text text-muted small flex-grow-1">University officials, government delegations, accreditation auditors, recruiters, and corporate partners.</p>
+                    <a href="{{ url_for('visitors.register_form', visit_type='OFFICIAL') }}" class="btn btn-outline-success w-100 mt-3">
+                        Register Official Visit <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTRACTOR -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm border-0 border-top border-4 border-warning hover-shadow">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge bg-warning text-dark text-uppercase">Contractor</span>
+                        <i class="bi bi-tools fs-4 text-warning"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Vendor & Contractor</h5>
+                    <p class="card-text text-muted small flex-grow-1">Maintenance technicians, delivery agents, construction personnel, and facilities service providers.</p>
+                    <a href="{{ url_for('visitors.register_form', visit_type='CONTRACTOR') }}" class="btn btn-outline-warning text-dark w-100 mt-3">
+                        Register Contractor <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIP -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm border-0 border-top border-4 border-danger hover-shadow">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge bg-danger text-uppercase">VIP</span>
+                        <i class="bi bi-star-fill fs-4 text-danger"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">VIP Delegation</h5>
+                    <p class="card-text text-muted small flex-grow-1">Distinguished dignitaries, keynote delegates, board trustees, and VIP guests requiring priority security access.</p>
+                    <a href="{{ url_for('visitors.register_form', visit_type='VIP') }}" class="btn btn-outline-danger w-100 mt-3">
+                        Register VIP Visit <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        const latestPassRaw = localStorage.getItem('vms_latest_pass') || localStorage.getItem('vms_latest_registration');
+        if (latestPassRaw) {
+            const pass = JSON.parse(latestPassRaw);
+            if (pass && pass.reference) {
+                const banner = document.getElementById('local-pass-banner');
+                const nameEl = document.getElementById('local-pass-visitor-name');
+                const refEl = document.getElementById('local-pass-ref');
+                const linkEl = document.getElementById('local-pass-view-link');
+                const thumbEl = document.getElementById('local-pass-qr-thumb');
+                
+                if (nameEl) nameEl.textContent = pass.visitorName || 'Registered Visitor';
+                if (refEl) refEl.textContent = pass.reference;
+                if (linkEl) linkEl.href = '/visitors/pass/' + encodeURIComponent(pass.reference);
+                
+                const qrImg = pass.qrDataUrl || localStorage.getItem('vms_qr_img_' + pass.reference) || localStorage.getItem('vms_latest_qr_img');
+                if (qrImg && thumbEl) {
+                    thumbEl.innerHTML = '<img src="' + qrImg + '" alt="QR" style="width:100%;height:100%;object-fit:contain;">';
+                }
+                if (banner) banner.classList.remove('d-none');
+            }
+        }
+    } catch(e) {
+        console.warn('Local storage check error:', e);
+    }
+});
+</script>
+{% endblock %}

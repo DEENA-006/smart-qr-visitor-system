@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>403 Forbidden — {{ app_name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body style="background:var(--color-background); display:flex; align-items:center; justify-content:center; min-height:100vh; padding:var(--space-6);">
+  <div class="card" style="max-width:480px; text-align:center; padding:var(--space-10);">
+    <div style="width:64px; height:64px; border-radius:50%; background:var(--color-danger-soft); color:var(--color-danger); display:flex; align-items:center; justify-content:center; margin:0 auto var(--space-4);">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+    <span class="badge badge-danger" style="margin-bottom:var(--space-2);">403 Access Denied</span>
+    <h1 style="font-size:22px; font-weight:700; color:var(--color-text); margin-bottom:var(--space-2);">Restricted Resource</h1>
+    <p style="font-size:14px; color:var(--color-text-secondary); margin-bottom:var(--space-6); line-height:1.5;">
+      You do not have the required role permissions to view this campus section. This access attempt has been logged for security audits.
+    </p>
+    <a href="{{ url_for('main.index') }}" class="btn btn-primary" style="width:100%;">
+      Return to My Dashboard
+    </a>
+  </div>
+</body>
+</html>

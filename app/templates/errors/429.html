@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>429 Too Many Requests — {{ app_name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body style="background:var(--color-background); display:flex; align-items:center; justify-content:center; min-height:100vh; padding:var(--space-6);">
+  <div class="card" style="max-width:480px; text-align:center; padding:var(--space-10);">
+    <div style="width:64px; height:64px; border-radius:50%; background:var(--color-warning-soft, #fef3c7); color:var(--color-warning, #d97706); display:flex; align-items:center; justify-content:center; margin:0 auto var(--space-4);">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+    </div>
+    <span class="badge badge-warning" style="margin-bottom:var(--space-2); background:var(--color-warning-soft, #fef3c7); color:var(--color-warning, #d97706); padding: 4px 10px; border-radius: 9999px; font-weight: 600; font-size: 12px;">429 Too Many Requests</span>
+    <h1 style="font-size:22px; font-weight:700; color:var(--color-text); margin-bottom:var(--space-2);">Rate Limit Exceeded</h1>
+    <p style="font-size:14px; color:var(--color-text-secondary); margin-bottom:var(--space-6); line-height:1.5;">
+      Too many requests were received from your IP address. Please pause and try again in 
+      {% if retry_after %}
+        <strong>{{ retry_after }} seconds</strong>.
+      {% else %}
+        a few moments.
+      {% endif %}
+    </p>
+    <a href="{{ url_for('main.index') }}" class="btn btn-primary" style="width:100%;">
+      Return to Home
+    </a>
+  </div>
+</body>
+</html>

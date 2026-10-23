@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+    <div class="col-lg-8 col-xl-7">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4 p-md-5 text-center">
+                <div class="mb-3 text-success">
+                    <i class="bi bi-check-circle-fill display-3"></i>
+                </div>
+                <h2 class="h3 fw-bold mb-1">Registration Request Submitted!</h2>
+                <p class="text-muted mb-4">Your campus access registration has been securely received and forwarded to your host for review.</p>
+
+                <!-- Tracking Reference Box -->
+                <div class="p-3 bg-light rounded border mb-4">
+                    <div class="text-muted small text-uppercase fw-semibold tracking-wider mb-1">Your Tracking Reference Code</div>
+                    <div class="h3 fw-bold text-primary font-monospace mb-0" id="tracking-reference">{{ visit_request.public_reference }}</div>
+                    <small class="text-muted">Save this code to check your visit status at security entry gates.</small>
+                </div>
+
+                {% if visit_request.is_possible_duplicate %}
+                <div class="alert alert-warning text-start d-flex align-items-center gap-2 mb-4">
+                    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+                    <div class="small">
+                        <strong>Note:</strong> Our system detected a recent active visit request with matching contact details. Your request was successfully submitted and will be reviewed by campus staff.
+                    </div>
+                </div>
+                {% endif %}
+
+                {% set cred = visit_request.active_credential or visit_request.qr_credentials.first() %}
+                {% if visit_request.status == 'APPROVED' and cred %}
+                <!-- Generated QR Pass Display -->
+                <div class="card border-success border-2 rounded-3 mb-4 p-4 bg-white shadow-sm text-center" id="generatedQrSection">
+                    <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill mb-2 bg-success text-white small fw-bold text-uppercase">
+                        <i class="bi bi-qr-code"></i> Entry Pass QR Code Generated
+                    </div>
+                    <div class="p-3 bg-light rounded border d-inline-block mx-auto mb-2" style="max-width: 240px;">
+                        <img
+                            src="{{ url_for('visitors.serve_pass_qr', public_reference=visit_request.public_reference) }}"
+                            alt="Generated QR Pass"
+                            class="img-fluid rounded"
+                            width="200"
+                            height="200"
+                            id="confirmation-qr-img"
+                            style="display: block; margin: 0 auto; image-rendering: pixelated;"
+                        >
+                    </div>
+                    <p class="small text-muted mb-2">Present this QR code at campus security gates for instant entry check-in.</p>
+                    <div>
+                        <a href="{{ url_for('visitors.serve_pass_qr', public_reference=visit_request.public_reference, download=1) }}" download="visitor-qr-{{ visit_request.public_reference }}.png" class="btn btn-sm btn-success shadow-sm" id="btn-download-qr-confirmation">
+                            <i class="bi bi-download me-1"></i> Download QR Code
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Visitor Details Section -->
+                <div class="text-start mb-2 px-1">
+                    <h3 class="h6 fw-bold text-dark mb-0">
+                        <i class="bi bi-person-lines-fill text-primary me-2"></i>Visitor's Details
+                    </h3>
+                </div>
+                <div class="table-responsive text-start border rounded mb-4">
+                    <table class="table table-sm table-striped mb-0">
+                        <tbody>
+                            <tr>
+                                <th class="w-40 ps-3 py-2 text-muted">Visitor Name</th>
+                                <td class="fw-bold py-2 text-dark">{{ visit_request.visitor.full_name }}</td>
+                            </tr>
+                            <tr>
+                                <th class="ps-3 py-2 text-muted">Tracking Reference</th>
+                                <td class="py-2 font-monospace fw-semibold text-primary">{{ visit_request.public_reference }}</td>
+                            </tr>
+                            {% if visit_request.visitor.organization %}
+                            <tr>
+                                <th class="ps-3 py-2 text-muted">Organization</th>
+                                <td class="py-2">{{ visit_request.visitor.organization }}</td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <th class="ps-3 py-2 text-muted">Visit Type</th>
+                                <td class="py-2"><span class="badge bg-primary text-uppercase">{{ visit_request.visit_type }}</span></td>
+                            </tr>
+                            <tr>
+                                <th class="ps-3 py-2 text-muted">Campus Host</th>
+                                <td class="py-2">{{ visit_request.host.full_name if visit_request.host else '—' }} ({{ visit_request.department or 'Campus' }})</td>
+                            </tr>
+                            <tr>
+                                <th class="ps-3 py-2 text-muted">Visit Purpose</th>
+                                <td class="py-2">{{ visit_request.purpose }}</td>
+                            </tr>
+                            <tr>
+                                <th class="ps-3 py-2 text-muted">Expected Arrival</th>
+                                <td class="py-2">{{ format_dt(visit_request.planned_start_at) if visit_request.planned_start_at else 'As scheduled' }}</td>
+                            </tr>
+                            <tr>
+                                <th class="ps-3 py-2 text-muted">Current Status</th>
+                                <td class="py-2">
+                                    {% if visit_request.status == 'APPROVED' %}
+                                    <span class="badge bg-success" id="status-badge">
+                                        <i class="bi bi-check-circle-fill me-1"></i>Approved — QR pass available
+                                    </span>
+                                    {% elif visit_request.status == 'REJECTED' %}
+                                    <span class="badge bg-danger" id="status-badge">
+                                        <i class="bi bi-x-circle-fill me-1"></i>Rejected — registration not approved
+                                    </span>
+                                    {% elif visit_request.is_possible_duplicate %}
+                                    <span class="badge bg-warning text-dark" id="status-badge">
+                                        <i class="bi bi-shield-exclamation me-1"></i>Flagged — additional review required
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark" id="status-badge">
+                                        <i class="bi bi-hourglass-split me-1"></i>Submitted — awaiting review
+                                    </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Next Steps Info -->
+                <div class="alert alert-info text-start small mb-4">
+                    <h6 class="fw-bold mb-1"><i class="bi bi-info-circle me-1"></i>What happens next?</h6>
+                    <ol class="mb-0 ps-3">
+                        <li>Your host (<strong>{{ visit_request.host.full_name if visit_request.host else 'Assigned Staff' }}</strong>) will review your request.</li>
+                        <li>Upon approval, a secure dynamic QR Visitor Pass will be generated for your entry.</li>
+                        <li>Present your QR pass at the security gate on the date of your visit for rapid check-in.</li>
+                    </ol>
+                </div>
+
+                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                    {% if visit_request.status == 'APPROVED' %}
+                    <a href="{{ url_for('visitors.serve_pass_qr', public_reference=visit_request.public_reference, download=1) }}" download="visitor-qr-{{ visit_request.public_reference }}.png" class="btn btn-primary" id="btn-download-qr-action">
+                        <i class="bi bi-download me-1"></i> Download QR Code
+                    </a>
+                    <a href="{{ url_for('visitors.visitor_pass', public_reference=visit_request.public_reference) }}" class="btn btn-success" id="btn-view-pass">
+                        <i class="bi bi-qr-code me-1"></i>View Digital Visitor Pass
+                    </a>
+                    {% endif %}
+                    <button type="button" class="btn btn-outline-secondary" onclick="window.print();">
+                        <i class="bi bi-printer me-1"></i>Print Receipt
+                    </button>
+                    <a href="{{ url_for('visitors.register_index') }}" class="btn btn-primary">
+                        <i class="bi bi-house me-1"></i>Visitor Portal Home
+                    </a>
+                </div>
+
+                <div id="storage-saved-alert" class="alert alert-success mt-3 py-2 px-3 small d-none" role="alert" style="max-width: 480px; margin: 1rem auto 0 auto;">
+                    <i class="bi bi-check-circle-fill me-1"></i> QR Code successfully saved to device downloads & browser local storage!
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const publicRef = "{{ visit_request.public_reference }}";
+    const visitorName = "{{ visit_request.visitor.full_name }}";
+    const qrImg = document.getElementById('confirmation-qr-img');
+    const storageAlert = document.getElementById('storage-saved-alert');
+
+    // Always save registration details to localStorage
+    try {
+        const regData = {
+            reference: publicRef,
+            visitorName: visitorName,
+            visitType: "{{ visit_request.visit_type }}",
+            status: "{{ visit_request.status }}",
+            host: "{{ visit_request.host.full_name if visit_request.host else '' }}",
+            savedAt: new Date().toISOString()
+        };
+        localStorage.setItem('vms_registration_' + publicRef, JSON.stringify(regData));
+        localStorage.setItem('vms_latest_registration', JSON.stringify(regData));
+        localStorage.setItem('vms_pass_' + publicRef, JSON.stringify(regData));
+        localStorage.setItem('vms_latest_pass', JSON.stringify(regData));
+    } catch(e) {
+        console.warn('localStorage error:', e);
+    }
+
+    function savePassToLocalStorage(dataUrl) {
+        try {
+            const passData = {
+                reference: publicRef,
+                visitorName: visitorName,
+                visitType: "{{ visit_request.visit_type }}",
+                status: "{{ visit_request.status }}",
+                savedAt: new Date().toISOString()
+            };
+            if (dataUrl) {
+                passData.qrDataUrl = dataUrl;
+                localStorage.setItem('vms_qr_img_' + publicRef, dataUrl);
+                localStorage.setItem('vms_latest_qr_img', dataUrl);
+                localStorage.setItem('vms_qr_' + publicRef, dataUrl);
+                localStorage.setItem('vms_qr_code', dataUrl);
+                localStorage.setItem('vms_qr_image', dataUrl);
+                localStorage.setItem('qr_code_' + publicRef, dataUrl);
+                localStorage.setItem('qr_code', dataUrl);
+            }
+            localStorage.setItem('vms_pass_' + publicRef, JSON.stringify(passData));
+            localStorage.setItem('vms_latest_pass', JSON.stringify(passData));
+            console.log('Saved pass and QR to localStorage successfully:', publicRef);
+        } catch (e) {
+            console.warn('localStorage error:', e);
+        }
+    }
+
+    function captureAndSaveQrImage(onComplete) {
+        if (!qrImg || !qrImg.src) {
+            if (onComplete) onComplete(null);
+            return;
+        }
+
+        // Fetch image bytes directly as Blob (same-origin, 100% reliable)
+        fetch(qrImg.src)
+            .then(res => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.blob();
+            })
+            .then(blob => {
+                const reader = new FileReader();
+                reader.onloadend = function() {
+                    const dataUrl = reader.result;
+                    if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image')) {
+                        savePassToLocalStorage(dataUrl);
+                        if (onComplete) onComplete(dataUrl);
+                    } else {
+                        fallbackCanvasSave(onComplete);
+                    }
+                };
+                reader.readAsDataURL(blob);
+            })
+            .catch(err => {
+                console.warn('Fetch blob QR failed, using canvas fallback:', err);
+                fallbackCanvasSave(onComplete);
+            });
+    }
+
+    function fallbackCanvasSave(onComplete) {
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = qrImg.naturalWidth || 240;
+            canvas.height = qrImg.naturalHeight || 240;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(qrImg, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/png');
+            savePassToLocalStorage(dataUrl);
+            if (onComplete) onComplete(dataUrl);
+        } catch(e) {
+            console.error('Canvas drawImage error:', e);
+            savePassToLocalStorage(null);
+            if (onComplete) onComplete(null);
+        }
+    }
+
+    function handleQrDownload() {
+        captureAndSaveQrImage();
+        if (storageAlert) {
+            storageAlert.classList.remove('d-none');
+            setTimeout(() => storageAlert.classList.add('d-none'), 4000);
+        }
+    }
+
+    const btn1 = document.getElementById('btn-download-qr-confirmation');
+    const btn2 = document.getElementById('btn-download-qr-action');
+    if (btn1) btn1.addEventListener('click', handleQrDownload);
+    if (btn2) btn2.addEventListener('click', handleQrDownload);
+
+    // Auto-save QR code to localStorage on page load if visible
+    if (qrImg) {
+        captureAndSaveQrImage();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Security Audit Trail — {{ app_name }}{% endblock %}
+{% block page_heading %}Security & Compliance Audit Trail{% endblock %}
+{% block page_subheading %}Immutable ledger of administrative actions, authentication attempts, approvals, and gate operations.{% endblock %}
+
+{% block content %}
+<!-- Filters Bar -->
+<div class="card" style="padding: var(--space-5); margin-bottom: var(--space-6);">
+  <form method="GET" action="{{ url_for('admin.audit_trail') }}">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); align-items: flex-end;">
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label" for="actionFilter">Event Action</label>
+        <select id="actionFilter" name="action" class="form-control">
+          <option value="">All Actions</option>
+          <option value="LOGIN_SUCCESS" {% if selected_action == 'LOGIN_SUCCESS' %}selected{% endif %}>LOGIN_SUCCESS</option>
+          <option value="LOGIN_FAILURE" {% if selected_action == 'LOGIN_FAILURE' %}selected{% endif %}>LOGIN_FAILURE</option>
+          <option value="LOGOUT" {% if selected_action == 'LOGOUT' %}selected{% endif %}>LOGOUT</option>
+          <option value="VISIT_APPROVED" {% if selected_action == 'VISIT_APPROVED' %}selected{% endif %}>VISIT_APPROVED</option>
+          <option value="VISIT_REJECTED" {% if selected_action == 'VISIT_REJECTED' %}selected{% endif %}>VISIT_REJECTED</option>
+          <option value="QR_ISSUED" {% if selected_action == 'QR_ISSUED' %}selected{% endif %}>QR_ISSUED</option>
+          <option value="QR_REVOKED" {% if selected_action == 'QR_REVOKED' %}selected{% endif %}>QR_REVOKED</option>
+          <option value="QR_REISSUED" {% if selected_action == 'QR_REISSUED' %}selected{% endif %}>QR_REISSUED</option>
+          <option value="CHECK_IN" {% if selected_action == 'CHECK_IN' %}selected{% endif %}>CHECK_IN</option>
+          <option value="CHECK_OUT" {% if selected_action == 'CHECK_OUT' %}selected{% endif %}>CHECK_OUT</option>
+          <option value="REPORT_EXPORTED" {% if selected_action == 'REPORT_EXPORTED' %}selected{% endif %}>REPORT_EXPORTED</option>
+          <option value="EMERGENCY_LIST_VIEWED" {% if selected_action == 'EMERGENCY_LIST_VIEWED' %}selected{% endif %}>EMERGENCY_LIST_VIEWED</option>
+          <option value="UNAUTHORIZED_ACCESS" {% if selected_action == 'UNAUTHORIZED_ACCESS' %}selected{% endif %}>UNAUTHORIZED_ACCESS</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label" for="userFilter">Staff Actor</label>
+        <select id="userFilter" name="user_id" class="form-control">
+          <option value="">All Staff</option>
+          {% for u in users %}
+            <option value="{{ u.id }}" {% if selected_user == u.id %}selected{% endif %}>{{ u.full_name }} ({{ u.role }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: flex; gap: var(--space-2);">
+        <button type="submit" class="btn btn-primary" style="flex: 1;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          Filter
+        </button>
+        <a href="{{ url_for('admin.audit_trail') }}" class="btn btn-outline" title="Reset Filters">
+          Reset
+        </a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Audit Log Table Card -->
+<div class="card" style="padding: 0; overflow: hidden; margin-bottom: var(--space-8);">
+  <div style="padding: var(--space-5) var(--space-6); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h3 style="font-size: 16px; font-weight: 700; color: var(--color-text); margin: 0;">Audit Events ({{ logs.total }})</h3>
+      <p style="font-size: 13px; color: var(--color-text-muted); margin: 2px 0 0 0;">Showing page {{ logs.page }} of {{ logs.pages or 1 }}</p>
+    </div>
+  </div>
+
+  {% if logs.items %}
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Timestamp (Local)</th>
+            <th>Actor</th>
+            <th>Action</th>
+            <th>Target Entity</th>
+            <th>Outcome</th>
+            <th>Reason / Details</th>
+            <th>IP Address</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in logs.items %}
+            <tr>
+              <td style="white-space: nowrap; font-size: 12.5px;">{{ format_dt(item.created_at) }}</td>
+              <td>
+                {% if item.actor %}
+                  <strong style="color: var(--color-text);">{{ item.actor.full_name }}</strong>
+                  <div style="font-size: 11px; color: var(--color-text-muted);">{{ item.actor.role }}</div>
+                {% else %}
+                  <span style="color: var(--color-text-muted);">System / Anon</span>
+                {% endif %}
+              </td>
+              <td><code>{{ item.action }}</code></td>
+              <td>
+                <span style="font-size: 12.5px;">{{ item.entity_reference or item.entity_type }}</span>
+              </td>
+              <td>
+                {% if item.outcome == 'SUCCESS' %}
+                  <span class="badge badge-success">Success</span>
+                {% elif item.outcome == 'FAILURE' %}
+                  <span class="badge badge-danger">Failure</span>
+                {% else %}
+                  <span class="badge badge-warning">{{ item.outcome }}</span>
+                {% endif %}
+              </td>
+              <td style="max-width: 250px; font-size: 12.5px; color: var(--color-text-secondary); word-break: break-word;">
+                {{ item.reason or '—' }}
+              </td>
+              <td style="font-family: monospace; font-size: 12px;">{{ item.ip_address or '—' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if logs.pages > 1 %}
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-4) var(--space-6); border-top: 1px solid var(--color-border);">
+        <span style="font-size: 13px; color: var(--color-text-muted);">Showing page {{ logs.page }} of {{ logs.pages }}</span>
+        <div style="display: flex; gap: var(--space-2);">
+          {% if logs.has_prev %}
+            <a href="{{ url_for('admin.audit_trail', page=logs.prev_num, action=selected_action, user_id=selected_user) }}" class="btn btn-outline btn-sm">&larr; Previous</a>
+          {% endif %}
+          {% if logs.has_next %}
+            <a href="{{ url_for('admin.audit_trail', page=logs.next_num, action=selected_action, user_id=selected_user) }}" class="btn btn-outline btn-sm">Next &rarr;</a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  {% else %}
+    <div style="padding: var(--space-12); text-align: center; color: var(--color-text-muted);">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: var(--space-3); opacity: 0.4;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+      <h4 style="font-size: 16px; font-weight: 700; color: var(--color-text); margin-bottom: 4px;">No Audit Events Found</h4>
+      <p style="font-size: 13.5px; max-width: 400px; margin: 0 auto;">No audit records matched your filter criteria.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

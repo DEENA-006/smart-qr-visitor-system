@@ -1,0 +1,221 @@
+
+# Project Rules — Smart QR Visitor Management System
+
+## 1. Project Objective
+Build a secure, responsive, full-stack QR Code-Based Visitor Management System for a college or organization.
+
+The system must support:
+- Admin management
+- Faculty/host management
+- Security desk operations
+- Visitor registration
+- Configurable registration forms
+- Visitor approval and rejection
+- Secure QR code generation and scanning
+- Visitor check-in and check-out
+- Live visitor occupancy
+- Search, reports, emergency lists, and audit logs
+
+Do not build only a static frontend. Implement working backend APIs, database persistence, validation, authentication, and authorization.
+
+## 2. Required Technology Stack
+- Backend: Python with Flask
+- Database: SQLite for the initial version
+- Frontend: HTML5, CSS3, JavaScript
+- Templates: Jinja2
+- ORM: SQLAlchemy with Flask-SQLAlchemy
+- Database migrations: Flask-Migrate
+- Authentication: Flask-Login or an equivalent secure session-based solution
+- Form validation: Server-side validation is mandatory
+- Password hashing: Werkzeug password hashing or a suitable secure password-hashing library
+- QR codes: A maintained Python QR-code library
+- Testing: pytest
+- Configuration: Environment variables loaded from .env during development
+
+Use compatible, maintained package versions. Record dependencies in requirements.txt.
+
+Do not introduce React, Node.js, PostgreSQL, or other major technologies unless explicitly requested.
+
+## 3. Code Quality
+- Use readable, modular, maintainable code.
+- Follow Python PEP 8 conventions.
+- Use descriptive function, variable, class, and file names.
+- Avoid giant single-file applications.
+- Keep routes/controllers, business logic, models, templates, and static assets separate.
+- Reuse common logic instead of duplicating it.
+- Add docstrings and comments where they improve understanding.
+- Handle exceptions gracefully and log useful diagnostic details.
+- Never expose stack traces, passwords, secrets, or internal database errors to users.
+- Do not use placeholder functions for core features.
+- Do not leave important buttons nonfunctional.
+- Do not claim a feature is complete until it has been implemented and tested.
+
+## 4. Suggested Application Structure
+Organize the application using Flask blueprints or an equivalent modular structure.
+
+Include modules for:
+- Authentication
+- Admin
+- Faculty/host
+- Security
+- Visitor registration
+- Dynamic form configuration
+- Approvals
+- QR validation
+- Check-in and check-out
+- Reports and audit logs
+
+Keep configuration, extensions, models, services, templates, static assets, and tests organized separately.
+
+## 5. Roles and Permissions
+Support three primary roles:
+1. ADMIN
+2. FACULTY
+3. SECURITY
+
+Enforce permissions on the server for every protected page and API.
+
+ADMIN:
+- Manage users and roles.
+- Configure registration fields and form policies.
+- View and manage visitor records.
+- Configure visit types and approval rules.
+- Access reports, audit logs, and emergency lists.
+- Configure QR expiry and relevant security policies.
+
+FACULTY:
+- View visits assigned to them.
+- Approve or reject requests assigned to them.
+- View permitted visitor information.
+- Configure permitted form options only when explicitly authorized by an administrator.
+- Never change global security policies or assign privileged roles.
+
+SECURITY:
+- Validate approved QR credentials.
+- Verify visitor identity according to organizational policy.
+- Check visitors in and out.
+- View current occupancy and necessary visitor details.
+- Access emergency lists needed for safety.
+- Never access unrelated administrative settings.
+
+Visitors may submit registration forms without an account if the configured workflow allows it. They must not gain access to staff dashboards.
+
+Never rely only on hidden buttons or frontend checks for authorization.
+
+## 6. Dynamic Registration Form
+- Admin defines the master form policy.
+- Admin can create, edit, activate, deactivate, and reorder allowed fields.
+- Faculty may customize only fields and options permitted by the admin.
+- Support field types such as text, telephone, email, select, date, time, textarea, and checkbox.
+- Support required/optional settings, labels, help text, options, and validation rules.
+- Allow different form configurations for different visit types.
+- Validate submitted values on the server using the active form configuration.
+- Store form definitions separately from visitor responses.
+- Preserve form versions so historical submissions remain interpretable.
+- Never allow a visitor to submit arbitrary fields that bypass the active configuration.
+- Never execute submitted JavaScript, HTML, SQL, or expressions.
+
+Collect only data needed for the visit.
+
+## 7. QR Security
+- Generate a cryptographically unpredictable, unique QR credential for each approved visit.
+- QR codes must not contain plaintext personal information.
+- Use opaque random tokens rather than predictable visitor IDs.
+- Store a secure hash of the QR token where practical; compare tokens securely.
+- Enforce expiry, approval status, and visit validity.
+- A successful entry must not be recorded twice.
+- Reject expired, revoked, unknown, unapproved, or already-used entry credentials.
+- Prevent concurrent scans from creating duplicate entries.
+- Record scan outcomes without logging raw QR secrets.
+- Support revocation and controlled reissue when necessary.
+- Require a separate valid checkout operation for an active visit.
+- Never treat possession of a QR code as conclusive identity verification.
+
+## 8. Check-In, Check-Out, and Occupancy
+- Use server-side timestamps in UTC and display them in the configured local timezone.
+- Store entry and exit events with the responsible staff member or authorized system identity.
+- Do not permit checkout without an active check-in.
+- Prevent duplicate active visits for the same visit credential.
+- Calculate current occupancy from active visit records.
+- Keep a traceable history of corrections and administrative overrides.
+- Do not silently delete or rewrite historical visit events.
+- Provide a controlled correction process with a reason and audit entry.
+
+## 9. Offline and Failure Handling
+- Handle database errors, invalid requests, expired sessions, and unavailable services gracefully.
+- Do not display a successful check-in until the server confirms it.
+- If offline operation is implemented, queue records as PENDING_SYNC and clearly label them unverified.
+- Do not treat a client device's clock or an offline scan as authoritative proof of entry.
+- Revalidate pending events on the server before accepting them.
+- Prevent synchronization from creating duplicate entries.
+- If safe offline validation is not possible, clearly instruct security staff to use the approved fallback procedure.
+
+## 10. Security and Privacy
+- Store passwords as hashes, never plaintext.
+- Use CSRF protection for state-changing requests.
+- Use secure, HTTP-only session cookies and appropriate SameSite settings.
+- Enable secure cookies in HTTPS production deployments.
+- Validate and normalize user input.
+- Use ORM queries or parameterized SQL; never concatenate untrusted input into SQL.
+- Prevent unauthorized direct-object access.
+- Rate-limit login and other abuse-prone endpoints.
+- Do not expose sensitive visitor information in URLs, QR codes, logs, or error messages.
+- Apply least-privilege access and minimize collected data.
+- Define retention and deletion policies with the organization.
+- Protect backups and exported reports.
+- Use HTTPS in production.
+- Do not commit .env, database files containing real data, credentials, or generated secrets.
+
+## 11. UI Requirements
+- Create a professional, clean, modern, responsive interface.
+- Support desktop, tablet, and mobile screen sizes.
+- Provide separate dashboards for Admin, Faculty, and Security.
+- Include loading, empty, error, success, and confirmation states.
+- Provide clear validation messages and accessible form labels.
+- Use semantic HTML and keyboard-accessible controls.
+- Do not use color alone to communicate status.
+- Confirm destructive or sensitive actions.
+- Make security desk actions quick and easy to understand.
+- Do not show mock statistics as real database values.
+
+## 12. Testing
+Create automated tests for:
+- Authentication and role permissions
+- Dynamic form configuration and validation
+- Visitor registration
+- Approval and rejection
+- QR expiry, revocation, and reuse prevention
+- Duplicate and concurrent check-in attempts
+- Check-out validation
+- Occupancy calculations
+- Audit logging
+- Invalid input and unauthorized access
+- Offline/pending synchronization if implemented
+
+Test both successful and rejected workflows.
+
+## 13. Development Workflow
+Before implementing a feature:
+1. Read context.md, prd.md, architecture.md, ui-guidelines.md, database-schema.md, and .env.example.
+2. Inspect the existing project before modifying files.
+3. Identify dependencies and database changes.
+4. Implement the feature in the correct modules.
+5. Add validation, authorization, error handling, and tests.
+6. Run the tests and resolve failures.
+7. Update documentation and setup instructions.
+
+Do not overwrite existing working code unnecessarily.
+Do not invent successful test results.
+Explain any unresolved limitations honestly.
+
+## 14. Definition of Done
+A feature is complete only when:
+- Its UI works.
+- Its backend logic works.
+- Data persists correctly.
+- Permissions are enforced server-side.
+- Validation and error handling are present.
+- Relevant tests pass.
+- Setup/documentation is updated.
+
+Build incrementally. Prioritize a reliable, secure foundation over decorative features.

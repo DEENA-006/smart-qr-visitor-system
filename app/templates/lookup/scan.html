@@ -1,0 +1,603 @@
+{% extends "base.html" %}
+
+{% block title %}Visitor Credential Lookup — {{ app_name }}{% endblock %}
+{% block page_heading %}Authorized Visitor Credential Lookup{% endblock %}
+{% block page_subheading %}Optical QR scanning and reference search for Administrators and Faculty hosts.{% endblock %}
+
+{% block content %}
+<!-- Info Alert Box -->
+<div class="card" style="margin-bottom: var(--space-6); border-left: 4px solid var(--color-primary); background: var(--color-surface);">
+  <div style="display:flex; align-items:flex-start; gap:var(--space-4);">
+    <div style="width: 36px; height: 36px; border-radius: var(--radius-md); background: var(--color-primary-soft); color: var(--color-primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    </div>
+    <div>
+      <h3 style="font-size: 14px; font-weight: 700; color: var(--color-text);">Role-Authorized Record Viewing</h3>
+      <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 2px;">
+        This lookup tool enables administrators and faculty hosts to verify visitor passes and inspect registered visitor details.
+        <strong>Note:</strong> Scanning a QR code here is for informational verification only and does not check in or alter the visitor's pass state. Gate check-in is conducted at security stations.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: var(--space-6); margin-bottom: var(--space-8);">
+  <!-- Scanner Station Panel -->
+  <div class="card" style="padding: var(--space-6);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-4);">
+      <h3 style="font-size: 16px; font-weight: 700; color: var(--color-text); margin: 0; display:flex; align-items:center; gap:var(--space-2);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
+        Camera QR Scanner
+      </h3>
+      <span id="lookupCameraStatus" class="badge badge-secondary">Ready</span>
+    </div>
+
+    <!-- Camera Viewport -->
+    <div style="position: relative; width: 100%; aspect-ratio: 4/3; background: #0f172a; border-radius: var(--radius-lg); overflow: hidden; display: flex; align-items: center; justify-content: center; border: 2px dashed var(--color-border);">
+      <video id="lookupScannerVideo" playsinline autoplay muted style="width: 100%; height: 100%; object-fit: cover; display: none;"></video>
+      <canvas id="lookupQrCanvas" style="display: none;"></canvas>
+
+      <div id="lookupCameraPlaceholder" style="text-align: center; padding: var(--space-6); color: var(--color-text-muted);">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: var(--space-3);"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+        <p style="font-size: 13.5px; margin-bottom: var(--space-4);">Click to start camera scanner for scanning visitor QR codes.</p>
+        <button type="button" id="lookupStartCamBtn" class="btn btn-primary btn-sm">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Start Camera
+        </button>
+      </div>
+
+      <!-- Viewfinder Overlay -->
+      <div id="lookupScanOverlay" style="display: none; position: absolute; inset: 0; pointer-events: none; border-radius: var(--radius-lg);">
+        <div id="lookupViewfinderBox" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 68%; height: 68%; border: 2px solid var(--color-primary); border-radius: var(--radius-md); box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.45); transition: border-color 0.25s, box-shadow 0.25s;">
+          <div id="lookupLaserLine" class="scan-laser" style="display: block;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Camera Controls & Image Upload Option -->
+    <div style="display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4);">
+      <button type="button" id="lookupStopCamBtn" class="btn btn-outline btn-sm" style="display: none;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+        Stop Camera
+      </button>
+      <button type="button" id="lookupSwitchCamBtn" class="btn btn-secondary btn-sm" style="display: none;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>
+        Switch Camera
+      </button>
+      <button type="button" id="lookupUploadQrBtn" class="btn btn-outline btn-sm" style="margin-left: auto;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Scan QR from Image
+      </button>
+      <input type="file" id="lookupQrFileInput" accept="image/*" style="display: none;">
+    </div>
+
+    <div style="margin: var(--space-6) 0; position: relative; text-align: center;">
+      <hr style="border: none; border-top: 1px solid var(--color-border); margin: 0;">
+      <span style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--color-surface); padding: 0 var(--space-3); font-size: 12px; font-weight: 600; color: var(--color-text-muted);">OR MANUAL LOOKUP</span>
+    </div>
+
+    <!-- Manual Search Fallback -->
+    <form id="lookupManualForm" data-no-disable>
+      <div class="form-group" style="margin-bottom: var(--space-3);">
+        <label class="form-label" for="lookupInput">Reference Code or Scanned QR Payload</label>
+        <div style="display: flex; gap: var(--space-2);">
+          <input type="text" id="lookupInput" class="form-control" placeholder="e.g. REQ-20261022-XXXXXX or VMS:..." value="{{ request.args.get('q', '') }}" required autofocus>
+          <button type="submit" id="lookupBtn" class="btn btn-primary" style="white-space: nowrap;">
+            Lookup
+          </button>
+        </div>
+        <small class="form-hint">Paste full token, raw QR payload, or visitor tracking reference.</small>
+      </div>
+    </form>
+  </div>
+
+  <!-- Visitor Details Card Panel -->
+  <div class="card" style="padding: var(--space-6); display: flex; flex-direction: column;">
+    <h3 style="font-size: 16px; font-weight: 700; color: var(--color-text); margin-bottom: var(--space-4);">
+      Visitor Record & Credential Status
+    </h3>
+
+    <!-- Idle State -->
+    <div id="lookupIdleState" style="text-align: center; padding: var(--space-12) var(--space-6); color: var(--color-text-muted); margin: auto;">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: var(--space-3); opacity: 0.4;"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+      <h4 style="font-size: 15px; font-weight: 600; color: var(--color-text); margin-bottom: 4px;">Awaiting QR Scan or Reference</h4>
+      <p style="font-size: 13px; max-width: 320px; margin: 0 auto;">Scan a visitor pass QR code or input a tracking reference code to display registration details and photo.</p>
+    </div>
+
+    <!-- Loading State -->
+    <div id="lookupLoadingState" style="display: none; text-align: center; padding: var(--space-12) var(--space-6); margin: auto;">
+      <div class="spinner" style="margin-bottom: var(--space-3);"></div>
+      <p style="font-size: 14px; font-weight: 600; color: var(--color-text);">Searching visitor database...</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="lookupErrorState" style="display: none; margin-bottom: var(--space-4);">
+      <div class="alert alert-danger" style="margin-bottom: 0;">
+        <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px;" id="lookupErrorTitle">Lookup Failed</div>
+        <div style="font-size: 13px;" id="lookupErrorMessage">Record not found.</div>
+      </div>
+    </div>
+
+    <!-- Result State -->
+    <div id="lookupResultCard" style="display: none; flex-direction: column; height: 100%;">
+      <!-- Status Banner -->
+      <div id="lookupStatusBanner" style="margin-bottom: var(--space-4);"></div>
+
+      <!-- Identity Comparison & Details -->
+      <div style="display: flex; gap: var(--space-5); align-items: flex-start; padding: var(--space-4); background: var(--color-surface-secondary); border-radius: var(--radius-lg); margin-bottom: var(--space-5); border: 1px solid var(--color-border);">
+        <!-- Registered Photo -->
+        <div style="flex-shrink: 0; text-align: center;">
+          <div style="width: 120px; height: 140px; border-radius: var(--radius-md); overflow: hidden; background: #000; border: 2px solid var(--color-border); box-shadow: var(--shadow-sm); display: flex; align-items: center; justify-content: center;">
+            <img id="lookupVisitorPhoto" src="" alt="Registered Visitor Photo" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+            <div id="lookupPhotoPlaceholder" style="color: var(--color-text-muted); font-size: 12px; padding: var(--space-2); text-align: center;">
+              No Photo Available
+            </div>
+          </div>
+          <span style="font-size: 11px; font-weight: 700; color: var(--color-text-secondary); display: block; margin-top: 4px; text-transform: uppercase;">Registered Photo</span>
+        </div>
+
+        <!-- Visitor Key Details -->
+        <div style="flex: 1; min-width: 0;">
+          <h4 id="lookupVisitorName" style="font-size: 18px; font-weight: 800; color: var(--color-text); margin: 0 0 4px 0;"></h4>
+          <div style="display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3);">
+            <span id="lookupVisitorCategory" class="badge badge-info"></span>
+            <span id="lookupVisitorReference" class="badge badge-secondary" style="font-family: monospace;"></span>
+            <span id="lookupCampusPresence" class="badge badge-neutral"></span>
+          </div>
+
+          <div style="font-size: 13px; line-height: 1.6; color: var(--color-text-secondary);">
+            <div><strong>Organization:</strong> <span id="lookupVisitorOrg">—</span></div>
+            <div><strong>Host / Department:</strong> <span id="lookupVisitorHost">—</span> (<span id="lookupVisitorDept">—</span>)</div>
+            <div><strong>Visit Purpose:</strong> <span id="lookupVisitorPurpose">—</span></div>
+            <div><strong>Planned Arrival:</strong> <span id="lookupVisitorArrival">—</span></div>
+            <div><strong>Planned Departure:</strong> <span id="lookupVisitorDeparture">—</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-secondary" style="font-size: 12.5px; margin-top: auto; margin-bottom: 0;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:middle; margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <strong>View-Only Record:</strong> This scan is logged for security auditing. Physical campus admission and badge issuance take place at security gates.
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes laserSweep {
+  0% { top: 5%; opacity: 0.3; }
+  50% { top: 92%; opacity: 1; }
+  100% { top: 5%; opacity: 0.3; }
+}
+.scan-laser {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  height: 2px;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981, 0 0 16px #34d399;
+  animation: laserSweep 2s ease-in-out infinite;
+  pointer-events: none;
+}
+</style>
+
+<script src="{{ url_for('static', filename='js/jsQR.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const video = document.getElementById('lookupScannerVideo');
+  const canvas = document.getElementById('lookupQrCanvas');
+  const startCamBtn = document.getElementById('lookupStartCamBtn');
+  const stopCamBtn = document.getElementById('lookupStopCamBtn');
+  const switchCamBtn = document.getElementById('lookupSwitchCamBtn');
+  const cameraPlaceholder = document.getElementById('lookupCameraPlaceholder');
+  const scanOverlay = document.getElementById('lookupScanOverlay');
+  const viewfinderBox = document.getElementById('lookupViewfinderBox');
+  const cameraStatus = document.getElementById('lookupCameraStatus');
+
+  const uploadQrBtn = document.getElementById('lookupUploadQrBtn');
+  const qrFileInput = document.getElementById('lookupQrFileInput');
+
+  const manualForm = document.getElementById('lookupManualForm');
+  const lookupInput = document.getElementById('lookupInput');
+  const lookupBtn = document.getElementById('lookupBtn');
+
+  const idleState = document.getElementById('lookupIdleState');
+  const loadingState = document.getElementById('lookupLoadingState');
+  const errorState = document.getElementById('lookupErrorState');
+  const resultCard = document.getElementById('lookupResultCard');
+
+  let currentStream = null;
+  let useFacingMode = 'environment';
+  let isScanningActive = false;
+  let scanAnimationId = null;
+  let lastScannedPayload = null;
+  let lastScanTimestamp = 0;
+  let isLookingUp = false;
+
+  // Sound cue for scan detection using Web Audio API
+  function playScanBeep() {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime); // 880 Hz
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.12);
+    } catch (e) {
+      // Autoplay restriction fallback
+    }
+  }
+
+  // Handle URL query pre-fill
+  if (lookupInput.value.trim().length > 0) {
+    performLookup(lookupInput.value.trim());
+  }
+
+  // Camera Management
+  async function startCamera() {
+    try {
+      cameraStatus.textContent = 'Connecting...';
+      cameraStatus.className = 'badge badge-warning';
+
+      const constraints = {
+        video: {
+          facingMode: { ideal: useFacingMode },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      };
+
+      currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = currentStream;
+      video.style.display = 'block';
+      cameraPlaceholder.style.display = 'none';
+      scanOverlay.style.display = 'block';
+      stopCamBtn.style.display = 'inline-flex';
+      switchCamBtn.style.display = 'inline-flex';
+      startCamBtn.style.display = 'none';
+
+      await video.play().catch(e => console.log('Video play policy:', e));
+
+      cameraStatus.textContent = 'Scanning Active';
+      cameraStatus.className = 'badge badge-success';
+
+      isScanningActive = true;
+      startScanningLoop();
+    } catch (err) {
+      console.warn("Camera start error:", err);
+      cameraStatus.textContent = 'Camera Unavailable';
+      cameraStatus.className = 'badge badge-danger';
+      alert("Unable to access camera. Please check camera permissions in your browser address bar, or use 'Scan QR from Image' or manual code entry below.");
+    }
+  }
+
+  function stopCamera() {
+    isScanningActive = false;
+    if (scanAnimationId) {
+      cancelAnimationFrame(scanAnimationId);
+      scanAnimationId = null;
+    }
+    if (currentStream) {
+      currentStream.getTracks().forEach(track => track.stop());
+      currentStream = null;
+    }
+    video.style.display = 'none';
+    cameraPlaceholder.style.display = 'block';
+    scanOverlay.style.display = 'none';
+    stopCamBtn.style.display = 'none';
+    switchCamBtn.style.display = 'none';
+    startCamBtn.style.display = 'inline-flex';
+    cameraStatus.textContent = 'Ready';
+    cameraStatus.className = 'badge badge-secondary';
+    if (viewfinderBox) {
+      viewfinderBox.style.borderColor = 'var(--color-primary)';
+      viewfinderBox.style.boxShadow = '0 0 0 9999px rgba(15, 23, 42, 0.45)';
+    }
+  }
+
+  // Continuous Camera QR Frame Decoding Loop
+  function startScanningLoop() {
+    if (scanAnimationId) {
+      cancelAnimationFrame(scanAnimationId);
+    }
+
+    let barcodeDetector = null;
+    if ('BarcodeDetector' in window) {
+      try {
+        barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
+      } catch (e) {
+        barcodeDetector = null;
+      }
+    }
+
+    async function tick() {
+      if (!isScanningActive || !currentStream) return;
+
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0 && video.videoHeight > 0) {
+        if (!isLookingUp) {
+          let detectedCode = null;
+
+          // 1. Native BarcodeDetector (hardware accelerated)
+          if (barcodeDetector) {
+            try {
+              const barcodes = await barcodeDetector.detect(video);
+              if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+                detectedCode = barcodes[0].rawValue.trim();
+              }
+            } catch (err) {}
+          }
+
+          // 2. jsQR Canvas fallback (scaled for 60fps real-time camera decoding)
+          if (!detectedCode && window.jsQR) {
+            let scanW = video.videoWidth;
+            let scanH = video.videoHeight;
+            if (scanW > 640) {
+              scanH = Math.round(scanH * (640 / scanW));
+              scanW = 640;
+            }
+            canvas.width = scanW;
+            canvas.height = scanH;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(video, 0, 0, scanW, scanH);
+            const imgData = ctx.getImageData(0, 0, scanW, scanH);
+            const qrResult = jsQR(imgData.data, scanW, scanH, {
+              inversionAttempts: "attemptBoth"
+            });
+            if (qrResult && qrResult.data) {
+              detectedCode = qrResult.data.trim();
+            }
+          }
+
+          if (detectedCode) {
+            const now = Date.now();
+            // Debounce: prevent duplicate scan within 3 seconds
+            if (detectedCode !== lastScannedPayload || (now - lastScanTimestamp > 3000)) {
+              lastScannedPayload = detectedCode;
+              lastScanTimestamp = now;
+              handleCodeScanned(detectedCode);
+            }
+          }
+        }
+      }
+
+      if (isScanningActive) {
+        scanAnimationId = requestAnimationFrame(tick);
+      }
+    }
+
+    scanAnimationId = requestAnimationFrame(tick);
+  }
+
+  // Handle Successfully Scanned / Decoded QR Code
+  function handleCodeScanned(code) {
+    playScanBeep();
+
+    // Visual feedback on viewfinder
+    if (viewfinderBox) {
+      viewfinderBox.style.borderColor = '#10b981';
+      viewfinderBox.style.boxShadow = '0 0 25px #10b981, 0 0 0 9999px rgba(15, 23, 42, 0.45)';
+    }
+    cameraStatus.textContent = 'QR Code Detected!';
+    cameraStatus.className = 'badge badge-success';
+
+    setTimeout(() => {
+      if (viewfinderBox) {
+        viewfinderBox.style.borderColor = 'var(--color-primary)';
+        viewfinderBox.style.boxShadow = '0 0 0 9999px rgba(15, 23, 42, 0.45)';
+      }
+      if (isScanningActive) {
+        cameraStatus.textContent = 'Scanning Active';
+        cameraStatus.className = 'badge badge-success';
+      }
+    }, 1200);
+
+    // Auto-fill reference input and execute lookup
+    lookupInput.value = code;
+    performLookup(code);
+  }
+
+  // Image Upload File Scanner
+  uploadQrBtn.addEventListener('click', () => qrFileInput.click());
+  qrFileInput.addEventListener('change', function(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      const img = new Image();
+      img.onload = async function() {
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        let detected = null;
+
+        // Try BarcodeDetector first
+        if ('BarcodeDetector' in window) {
+          try {
+            const detector = new BarcodeDetector({ formats: ['qr_code'] });
+            const barcodes = await detector.detect(img);
+            if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+              detected = barcodes[0].rawValue.trim();
+            }
+          } catch (err) {}
+        }
+
+        // Try jsQR fallback
+        if (!detected && window.jsQR) {
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const qr = jsQR(imgData.data, imgData.width, imgData.height, {
+            inversionAttempts: "attemptBoth"
+          });
+          if (qr && qr.data) {
+            detected = qr.data.trim();
+          }
+        }
+
+        if (detected) {
+          handleCodeScanned(detected);
+        } else {
+          alert("Could not detect a clear QR code in this image. Please ensure the QR code is centered and in focus.");
+        }
+      };
+      img.src = evt.target.result;
+    };
+    reader.readAsDataURL(file);
+    qrFileInput.value = '';
+  });
+
+  startCamBtn.addEventListener('click', startCamera);
+  stopCamBtn.addEventListener('click', stopCamera);
+  switchCamBtn.addEventListener('click', () => {
+    stopCamera();
+    useFacingMode = (useFacingMode === 'environment') ? 'user' : 'environment';
+    startCamera();
+  });
+
+  const originalLookupBtnText = lookupBtn ? lookupBtn.innerHTML : 'Lookup';
+
+  // Manual Form Submission
+  manualForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const val = lookupInput.value.trim();
+    if (!val) {
+      showError('Validation Error', 'Please enter a reference code or QR token.');
+      lookupInput.focus();
+      return;
+    }
+    performLookup(val);
+  });
+
+  // Lookup Request
+  async function performLookup(credentialString) {
+    idleState.style.display = 'none';
+    errorState.style.display = 'none';
+    resultCard.style.display = 'none';
+    loadingState.style.display = 'block';
+    if (lookupBtn) {
+      lookupBtn.disabled = true;
+      lookupBtn.innerHTML = `
+        <svg style="animation: spin 1s linear infinite; width:15px; height:15px; vertical-align: middle; margin-right: 6px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+          <path d="M12 2a10 10 0 0 1 10 10"></path>
+        </svg> Looking up...
+      `;
+    }
+    isLookingUp = true;
+
+    try {
+      const response = await fetch("{{ url_for('lookup.verify') }}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': "{{ csrf_token() }}"
+        },
+        body: JSON.stringify({ credential: credentialString })
+      });
+
+      const contentType = response.headers.get('content-type') || '';
+      let data = {};
+      if (contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        throw new Error('Unexpected response format from server');
+      }
+
+      if (response.status === 403) {
+        showError('Access Denied (403)', data.message || 'You are not authorized to view this visitor record.');
+        return;
+      }
+
+      if (response.status === 404 || !data.visitor_details) {
+        showError(data.status || 'Record Not Found', data.message || 'No visitor was found for this code.');
+        return;
+      }
+
+      showResult(data);
+    } catch (err) {
+      showError('Network / Server Error', 'Could not communicate with the visitor lookup service: ' + (err.message || 'Unknown error'));
+    } finally {
+      loadingState.style.display = 'none';
+      if (lookupBtn) {
+        lookupBtn.disabled = false;
+        lookupBtn.innerHTML = originalLookupBtnText;
+      }
+      isLookingUp = false;
+    }
+  }
+
+  function showError(title, message) {
+    document.getElementById('lookupErrorTitle').textContent = title.replace(/_/g, ' ');
+    document.getElementById('lookupErrorMessage').textContent = message;
+    errorState.style.display = 'block';
+  }
+
+  function showResult(data) {
+    const details = data.visitor_details || {};
+    document.getElementById('lookupVisitorName').textContent = details.full_name || 'Visitor';
+    document.getElementById('lookupVisitorCategory').textContent = details.visit_type || 'VISIT';
+    document.getElementById('lookupVisitorReference').textContent = details.reference || '—';
+    document.getElementById('lookupVisitorOrg').textContent = details.organization || '—';
+    document.getElementById('lookupVisitorHost').textContent = details.host_name || '—';
+    document.getElementById('lookupVisitorDept').textContent = details.department || 'General';
+    document.getElementById('lookupVisitorPurpose').textContent = details.purpose || '—';
+    document.getElementById('lookupVisitorArrival').textContent = details.planned_start_at ? new Date(details.planned_start_at).toLocaleString() : 'As scheduled';
+    document.getElementById('lookupVisitorDeparture').textContent = details.planned_end_at ? new Date(details.planned_end_at).toLocaleString() : '—';
+
+    // On-campus presence
+    const presenceBadge = document.getElementById('lookupCampusPresence');
+    if (details.is_currently_on_campus) {
+      presenceBadge.className = 'badge badge-success';
+      presenceBadge.textContent = 'Currently On Campus (Admitted ' + (details.checked_in_at ? new Date(details.checked_in_at).toLocaleTimeString() : '') + ')';
+    } else {
+      presenceBadge.className = 'badge badge-neutral';
+      presenceBadge.textContent = 'Not Currently On Campus';
+    }
+
+    // Photo
+    const photoImg = document.getElementById('lookupVisitorPhoto');
+    const photoPlaceholder = document.getElementById('lookupPhotoPlaceholder');
+    if (details.photo_url) {
+      photoImg.src = details.photo_url;
+      photoImg.style.display = 'block';
+      photoPlaceholder.style.display = 'none';
+    } else {
+      photoImg.style.display = 'none';
+      photoPlaceholder.style.display = 'block';
+    }
+
+    // Status Banner Rendering
+    const banner = document.getElementById('lookupStatusBanner');
+    const status = data.status;
+    let bannerHtml = '';
+
+    if (status === 'VALID') {
+      bannerHtml = '<div class="alert alert-success" style="margin-bottom:0;"><strong>Credential Valid.</strong> ' + (data.message || 'Visitor registration is approved and active.') + '</div>';
+    } else if (status === 'EXPIRED') {
+      bannerHtml = '<div class="alert alert-warning" style="margin-bottom:0;"><strong>Credential Expired.</strong> ' + (data.message || 'This visitor credential has expired.') + '</div>';
+    } else if (status === 'REVOKED') {
+      bannerHtml = '<div class="alert alert-danger" style="margin-bottom:0;"><strong>Credential Revoked.</strong> ' + (data.message || 'This visitor credential was revoked by staff.') + '</div>';
+    } else if (status === 'CONSUMED') {
+      bannerHtml = '<div class="alert alert-info" style="margin-bottom:0;"><strong>Credential Consumed.</strong> ' + (data.message || 'This credential has already been used.') + '</div>';
+    } else if (status === 'NOT_YET_VALID') {
+      bannerHtml = '<div class="alert alert-info" style="margin-bottom:0;"><strong>Scheduled for Future Visit.</strong> ' + (data.message || 'This credential is not yet active.') + '</div>';
+    } else if (status === 'REJECTED') {
+      bannerHtml = '<div class="alert alert-danger" style="margin-bottom:0;"><strong>Registration Rejected.</strong> ' + (data.message || 'This registration request was rejected.') + '</div>';
+    } else if (status === 'PENDING_APPROVAL') {
+      bannerHtml = '<div class="alert alert-warning" style="margin-bottom:0;"><strong>Pending Approval.</strong> ' + (data.message || 'Awaiting host/faculty approval.') + '</div>';
+    } else {
+      bannerHtml = '<div class="alert alert-secondary" style="margin-bottom:0;"><strong>Status: ' + status + '.</strong> ' + (data.message || '') + '</div>';
+    }
+
+    banner.innerHTML = bannerHtml;
+    resultCard.style.display = 'flex';
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center py-3 py-md-4">
+  <div class="col-12 col-md-10 col-lg-8 col-xl-7">
+    <!-- Main Visitor Digital Identity Pass Card -->
+    <div class="card visitor-pass-card border-0 shadow overflow-hidden" id="visitorPassCard" style="border-radius: var(--radius-xl, 16px); background: #ffffff;">
+      
+      <!-- Top Institutional Branding Header -->
+      <div class="pass-header p-4 text-center text-white" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #1e3a8a 100%); position: relative; border-bottom: 3px solid var(--color-primary, #2563eb);">
+        <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill mb-2" style="background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(4px); font-size: 11px; letter-spacing: 0.8px; text-transform: uppercase; font-weight: 600;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Smart Campus Access Control
+        </div>
+        <h1 class="h3 fw-bold mb-1 tracking-wide" style="color: #ffffff; letter-spacing: 0.5px;">VISITOR PASS</h1>
+        <div class="d-flex align-items-center justify-content-center gap-2 mt-1">
+          <span class="badge" style="background: rgba(255, 255, 255, 0.2); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;">{{ visit_request.visit_type }} ACCESS</span>
+          <span class="font-monospace" style="font-size: 12px; opacity: 0.9; color: #93c5fd;">{{ visit_request.public_reference }}</span>
+        </div>
+      </div>
+
+      <!-- Pass Body -->
+      <div class="card-body p-3 p-md-4 p-lg-5">
+        
+        <!-- Status Indicator Banner -->
+        {% if state == 'ACTIVE' %}
+          <div class="alert alert-success d-flex align-items-center justify-content-between p-3 mb-4 rounded-3 border-0" style="background: #ecfdf5; color: #065f46;" role="alert">
+            <div class="d-flex align-items-center gap-2">
+              <span class="status-pulse-dot" style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+              <strong>Authorized Visitor Pass</strong>
+            </div>
+            <span class="badge bg-success text-uppercase px-2 py-1" style="font-size: 11px;">Active &amp; Ready</span>
+          </div>
+        {% elif state == 'CONSUMED' %}
+          <div class="alert alert-info d-flex align-items-center justify-content-between p-3 mb-4 rounded-3 border-0" style="background: #eff6ff; color: #1e40af;" role="alert">
+            <div class="d-flex align-items-center gap-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+              <strong>ADMITTED / CURRENTLY ON CAMPUS</strong>
+            </div>
+            <span class="badge bg-primary text-uppercase px-2 py-1" style="font-size: 11px;">Checked In</span>
+          </div>
+        {% elif state == 'PENDING' %}
+          <div class="alert alert-warning p-3 mb-4 rounded-3 text-start border-0" style="background: #fffbeb; color: #92400e;" role="alert">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <strong>Pending Review &bull; Host Approval</strong>
+            </div>
+            <p class="small mb-0" style="color: #78350f;">
+              Your visit request is awaiting approval from your host (<strong>{{ visit_request.host_user.full_name if visit_request.host_user else 'Campus Host' }}</strong>). Your dynamic QR code will activate immediately upon approval.
+            </p>
+          </div>
+        {% elif state == 'REJECTED' %}
+          <div class="alert alert-danger p-3 mb-4 rounded-3 text-start border-0" style="background: #fef2f2; color: #991b1b;" role="alert">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              <strong>Request Rejected</strong>
+            </div>
+            <p class="small mb-0" style="color: #7f1d1d;">
+              This visit request was declined by institutional authority. Entry will not be permitted.
+              {% if visit_request.rejection_reason %}
+                <br><span class="fw-semibold mt-1 d-inline-block">Reason: {{ visit_request.rejection_reason }}</span>
+              {% endif %}
+            </p>
+          </div>
+        {% elif state == 'EXPIRED' %}
+          <div class="alert alert-secondary p-3 mb-4 rounded-3 text-start border-0" style="background: #f1f5f9; color: #475569;" role="alert">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 8 14"/></svg>
+              <strong>PASS EXPIRED</strong>
+            </div>
+            <p class="small mb-0" style="color: #334155;">
+              The validity window for this visit pass has ended. If you need to access campus facilities, please submit a new registration or contact your host.
+            </p>
+          </div>
+        {% elif state == 'REVOKED' %}
+          <div class="alert alert-danger p-3 mb-4 rounded-3 text-start border-0" style="background: #fef2f2; color: #991b1b;" role="alert">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <strong>CREDENTIAL REVOKED</strong>
+            </div>
+            <p class="small mb-0" style="color: #7f1d1d;">
+              This entry credential was revoked by campus security authority and is no longer valid.
+            </p>
+          </div>
+        {% else %}
+          <div class="alert alert-info p-3 mb-4 rounded-3 text-start border-0" role="alert">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <strong>PASS STATUS: {{ state }}</strong>
+            </div>
+            <p class="small mb-0 text-muted">
+              This visit request is currently not eligible for active entry.
+            </p>
+          </div>
+        {% endif %}
+
+        <!-- Identity & Photo Header Row -->
+        <div class="visitor-identity-box p-3 p-md-4 rounded-3 mb-4 text-start" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+          <div class="d-flex flex-column flex-sm-row align-items-center align-items-sm-start gap-3 gap-md-4">
+            
+            <!-- Passport Photo Container -->
+            <div class="pass-photo-frame text-center flex-shrink-0" style="position: relative;">
+              <div style="width: 120px; height: 140px; border-radius: 8px; overflow: hidden; background: #0f172a; border: 2px solid #cbd5e1; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08); display: flex; align-items: center; justify-content: center;">
+                {% if visit_request.photo_filename %}
+                  <img
+                    src="{{ url_for('visitors.serve_pass_photo', public_reference=visit_request.public_reference) }}"
+                    alt="Registered Photo of {{ visit_request.visitor.full_name }}"
+                    style="width: 100%; height: 100%; object-fit: cover; display: block;"
+                    id="visitorPassPhoto"
+                    onerror="this.style.display='none'; document.getElementById('passPhotoFallback').style.display='flex';"
+                  >
+                  <div id="passPhotoFallback" style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; color: #94a3b8; font-size: 11px; text-align: center; padding: 4px;">
+                    Photo on File
+                  </div>
+                {% else %}
+                  <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; padding: 6px;">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span style="font-size: 10.5px; margin-top: 4px;">No Photo</span>
+                  </div>
+                {% endif %}
+              </div>
+              <span class="badge bg-secondary text-uppercase mt-2" style="font-size: 10px; letter-spacing: 0.5px; display: inline-block;">Verified Photo</span>
+            </div>
+
+            <!-- Visitor Identity Details -->
+            <div class="flex-grow-1 text-center text-sm-start min-w-0" style="width: 100%;">
+              <div class="text-uppercase small fw-bold text-muted mb-1" style="font-size: 11px; letter-spacing: 0.6px;">Pass Holder</div>
+              <h2 class="h4 fw-bold text-dark mb-1 text-truncate" style="color: #0f172a;">{{ visit_request.visitor.full_name }}</h2>
+              
+              {% if visit_request.visitor.organization %}
+                <div class="d-inline-flex align-items-center gap-1 text-secondary mb-2" style="font-size: 13.5px; font-weight: 500;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/><path d="M9 9h1"/><path d="M9 13h1"/><path d="M9 17h1"/><path d="M14 9h1"/><path d="M14 13h1"/><path d="M14 17h1"/></svg>
+                  <span>{{ visit_request.visitor.organization }}</span>
+                </div>
+              {% endif %}
+
+              <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-sm-start mt-2">
+                <span class="badge border bg-white text-dark" style="font-size: 12px; font-family: monospace; font-weight: 600;">
+                  ID: {{ visit_request.public_reference }}
+                </span>
+                <span class="badge bg-primary-soft text-primary border" style="font-size: 11.5px; font-weight: 600;">
+                  {{ visit_request.visit_type }}
+                </span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Dynamic QR Credential Section (Only shown when active or checked in) -->
+        {% if has_qr %}
+          <div class="qr-credential-container text-center p-3 p-md-4 rounded-3 mb-4" style="background: #ffffff; border: 2px dashed #cbd5e1; position: relative;">
+            <div class="small fw-bold text-uppercase text-muted mb-3" style="font-size: 11.5px; letter-spacing: 0.8px;">
+              Digital Entry Credential
+            </div>
+
+            <!-- High-Contrast QR Code Card with Scanner Corner Markers -->
+            <div class="qr-card-wrapper d-inline-block p-3 rounded-3 shadow-sm bg-white border" style="max-width: 260px; position: relative;">
+              <img
+                src="{{ url_for('visitors.serve_pass_qr', public_reference=visit_request.public_reference) }}"
+                alt="Visitor Gate Entry QR Pass"
+                class="img-fluid rounded"
+                width="220"
+                height="220"
+                id="visitor-qr-code"
+                style="display: block; margin: 0 auto; image-rendering: pixelated; width: 220px; height: 220px;"
+              >
+            </div>
+
+            <!-- Mandatory Verification Notice -->
+            <div class="mt-3 p-2 rounded-2" style="background: #f8fafc; border: 1px solid #e2e8f0; max-width: 440px; margin-left: auto; margin-right: auto;">
+              <div class="d-flex align-items-center justify-content-center gap-2 text-dark fw-semibold" style="font-size: 12.5px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                Present this pass at the security desk for identity verification.
+              </div>
+              <div class="text-muted mt-1" style="font-size: 11.5px;">
+                Security will inspect your physical photo before scanning to confirm entry.
+              </div>
+            </div>
+
+            <!-- QR Download Helper Button -->
+            <div class="mt-3">
+              <a href="{{ url_for('visitors.serve_pass_qr', public_reference=visit_request.public_reference, download=1) }}" download="visitor-qr-{{ visit_request.public_reference }}.png" class="btn btn-sm btn-outline-primary px-3 shadow-sm" id="btn-download-qr-box">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download QR Image (PNG)
+              </a>
+            </div>
+          </div>
+        {% endif %}
+
+        <!-- Detailed Visit Specifications Table -->
+        <div class="text-start mb-4">
+          <div class="d-flex align-items-center justify-content-between mb-2 px-1">
+            <h3 class="h6 fw-bold text-dark mb-0 text-uppercase" style="font-size: 12.5px; letter-spacing: 0.5px;">
+              Visit Details &amp; Validity Window
+            </h3>
+            <span class="badge bg-light text-muted border" style="font-size: 11px;">Official Campus Record</span>
+          </div>
+          
+          <div class="table-responsive rounded-3 border bg-white overflow-hidden">
+            <table class="table table-sm mb-0" style="font-size: 13.5px;">
+              <tbody>
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <th class="ps-3 py-2 text-muted fw-semibold" style="width: 38%; background: #f8fafc;">Host / Sponsor</th>
+                  <td class="py-2 text-dark fw-semibold">
+                    {{ visit_request.host_user.full_name if visit_request.host_user else 'Campus Host' }}
+                    <span class="text-muted fw-normal">({{ visit_request.department or 'Campus' }})</span>
+                  </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <th class="ps-3 py-2 text-muted fw-semibold" style="background: #f8fafc;">Purpose of Visit</th>
+                  <td class="py-2 text-dark">{{ visit_request.purpose }}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <th class="ps-3 py-2 text-muted fw-semibold" style="background: #f8fafc;">Scheduled Arrival</th>
+                  <td class="py-2 text-dark fw-medium">
+                    {{ format_dt(visit_request.planned_start_at) if visit_request.planned_start_at else 'As scheduled on registration' }}
+                  </td>
+                </tr>
+                {% if active_cred and active_cred.expires_at %}
+                <tr>
+                  <th class="ps-3 py-2 text-muted fw-semibold" style="background: #f8fafc;">Pass Valid Until</th>
+                  <td class="py-2 text-success fw-bold">
+                    {{ format_dt(active_cred.expires_at) }}
+                  </td>
+                </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Action Controls Row -->
+        <div class="pass-actions-row d-flex justify-content-center gap-2 flex-wrap pt-2">
+          {% if has_qr %}
+          <button type="button" class="btn btn-primary px-4 py-2 fw-semibold" onclick="window.print();" id="btn-print-pass" style="display: inline-flex; align-items: center; gap: 6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Print Visitor Pass
+          </button>
+          
+          <a href="{{ url_for('visitors.serve_pass_qr', public_reference=visit_request.public_reference, download=1) }}" download="visitor-qr-{{ visit_request.public_reference }}.png" class="btn btn-outline-secondary px-3 py-2 fw-semibold" id="btn-download-qr" style="display: inline-flex; align-items: center; gap: 6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Save QR
+          </a>
+          {% endif %}
+
+          <a href="{{ url_for('visitors.register_confirmation', public_reference=visit_request.public_reference) }}" class="btn btn-outline-primary px-3 py-2 fw-semibold">
+            Tracking Status
+          </a>
+          
+          <a href="{{ url_for('visitors.register_index') }}" class="btn btn-light border px-3 py-2 text-secondary">
+            Portal Home
+          </a>
+        </div>
+
+        <div id="storage-saved-alert-pass" class="alert alert-success mt-3 py-2 px-3 small d-none" role="alert" style="max-width: 480px; margin: 1rem auto 0 auto;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="me-1"><polyline points="20 6 9 17 4 12"/></svg>
+          QR Code successfully stored to local device storage!
+        </div>
+      </div>
+
+      <!-- Footer Info -->
+      <div class="card-footer bg-light text-center py-3 text-muted small" style="font-size: 11.5px; border-top: 1px solid #e2e8f0;">
+        Smart QR Visitor Management System &bull; College Security Operations Desk &bull; Identity Verification Mandatory
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Print Styles -->
+<style>
+@media print {
+  /* Hide page chrome, navbars, and interactive buttons */
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .app-header, .app-sidebar, .pass-actions-row, #storage-saved-alert-pass, .btn, nav {
+    display: none !important;
+  }
+  .row {
+    margin: 0 !important;
+  }
+  .col-12 {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+  #visitorPassCard {
+    box-shadow: none !important;
+    border: 1px solid #000000 !important;
+    border-radius: 8px !important;
+    margin: 0 auto !important;
+    page-break-inside: avoid !important;
+    width: 95% !important;
+    max-width: 520px !important;
+  }
+  .pass-header {
+    background: #0f172a !important;
+    color: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .visitor-identity-box, .qr-credential-container, .table-responsive {
+    border: 1px solid #94a3b8 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+</style>
+
+{% if has_qr %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const publicRef = "{{ visit_request.public_reference }}";
+    const visitorName = "{{ visit_request.visitor.full_name }}";
+    const qrImg = document.getElementById('visitor-qr-code');
+    const storageAlert = document.getElementById('storage-saved-alert-pass');
+
+    function savePassToLocalStorage(dataUrl) {
+        try {
+            const passData = {
+                reference: publicRef,
+                visitorName: visitorName,
+                visitType: "{{ visit_request.visit_type }}",
+                status: "{{ visit_request.status }}",
+                savedAt: new Date().toISOString()
+            };
+            if (dataUrl) {
+                passData.qrDataUrl = dataUrl;
+                localStorage.setItem('vms_qr_img_' + publicRef, dataUrl);
+                localStorage.setItem('vms_latest_qr_img', dataUrl);
+                localStorage.setItem('vms_qr_' + publicRef, dataUrl);
+                localStorage.setItem('vms_qr_code', dataUrl);
+                localStorage.setItem('vms_qr_image', dataUrl);
+                localStorage.setItem('qr_code_' + publicRef, dataUrl);
+                localStorage.setItem('qr_code', dataUrl);
+            }
+            localStorage.setItem('vms_pass_' + publicRef, JSON.stringify(passData));
+            localStorage.setItem('vms_latest_pass', JSON.stringify(passData));
+        } catch (e) {
+            console.warn('localStorage error:', e);
+        }
+    }
+
+    function captureAndSaveQrImage(onComplete) {
+        if (!qrImg || !qrImg.src) {
+            if (onComplete) onComplete(null);
+            return;
+        }
+
+        fetch(qrImg.src)
+            .then(res => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.blob();
+            })
+            .then(blob => {
+                const reader = new FileReader();
+                reader.onloadend = function() {
+                    const dataUrl = reader.result;
+                    if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image')) {
+                        savePassToLocalStorage(dataUrl);
+                        if (onComplete) onComplete(dataUrl);
+                    } else {
+                        fallbackCanvasSave(onComplete);
+                    }
+                };
+                reader.readAsDataURL(blob);
+            })
+            .catch(err => {
+                console.warn('Fetch blob QR failed, using canvas fallback:', err);
+                fallbackCanvasSave(onComplete);
+            });
+    }
+
+    function fallbackCanvasSave(onComplete) {
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = qrImg.naturalWidth || 220;
+            canvas.height = qrImg.naturalHeight || 220;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(qrImg, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/png');
+            savePassToLocalStorage(dataUrl);
+            if (onComplete) onComplete(dataUrl);
+        } catch(e) {
+            savePassToLocalStorage(null);
+            if (onComplete) onComplete(null);
+        }
+    }
+
+    function handleQrDownload() {
+        captureAndSaveQrImage();
+        if (storageAlert) {
+            storageAlert.classList.remove('d-none');
+            setTimeout(() => storageAlert.classList.add('d-none'), 4000);
+        }
+    }
+
+    const btn1 = document.getElementById('btn-download-qr-box');
+    const btn2 = document.getElementById('btn-download-qr');
+    if (btn1) btn1.addEventListener('click', handleQrDownload);
+    if (btn2) btn2.addEventListener('click', handleQrDownload);
+
+    // Auto-save pass and QR to localStorage immediately on load
+    captureAndSaveQrImage();
+});
+</script>
+{% endif %}
+{% endblock %}

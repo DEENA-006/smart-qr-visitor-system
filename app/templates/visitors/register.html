@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+.gf-page-container {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 1.5rem 0.75rem 3rem;
+}
+.gf-header-card {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    position: relative;
+    margin-bottom: 1rem;
+}
+.gf-header-strip {
+    height: 10px;
+    background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+}
+.gf-header-body {
+    padding: 1.75rem 1.75rem 1.25rem;
+}
+.gf-card {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1rem;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.gf-card:focus-within {
+    border-color: #818cf8;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.12);
+}
+.gf-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+.gf-required {
+    color: #ef4444;
+    margin-left: 2px;
+    font-weight: 700;
+}
+.gf-help {
+    font-size: 0.8125rem;
+    color: #64748b;
+    margin-bottom: 0.75rem;
+}
+.gf-input {
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.95rem;
+    color: #1e293b;
+    width: 100%;
+    transition: all 0.15s ease-in-out;
+    background-color: #fafafa;
+}
+.gf-input:focus {
+    background-color: #ffffff;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    outline: none;
+}
+.gf-upload-box {
+    border: 2px dashed #cbd5e1;
+    border-radius: 10px;
+    padding: 1.5rem;
+    text-align: center;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.gf-upload-box:hover {
+    border-color: #818cf8;
+    background: #f1f5f9;
+}
+.gf-actions-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.75rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+</style>
+
+<div class="gf-page-container">
+    <!-- Breadcrumb -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <a href="{{ url_for('visitors.register_index') }}" class="text-decoration-none text-muted small d-inline-flex align-items-center gap-1">
+            <i class="bi bi-arrow-left"></i> Back to Portal
+        </a>
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 text-uppercase fw-semibold" style="font-size: 11px;">
+            {{ visit_type }}
+        </span>
+    </div>
+
+    {% if is_preview %}
+    <div class="alert alert-info d-flex align-items-center gap-2 mb-3 rounded-3 shadow-sm border-0">
+        <i class="bi bi-info-circle-fill fs-5 text-primary"></i>
+        <div class="small">
+            <strong>Form Preview Mode (Version {{ version.version_number }}):</strong> This preview displays exactly how visitors experience this form. Form submissions are disabled in preview mode.
+        </div>
+    </div>
+    {% endif %}
+
+    <form action="{{ url_for('visitors.register_form', identifier=form.public_token if form.public_token else visit_type) }}" method="POST" enctype="multipart/form-data" id="registration-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <!-- Google Form Header Card -->
+        <div class="gf-header-card">
+            <div class="gf-header-strip"></div>
+            <div class="gf-header-body">
+                <h1 class="h3 fw-bold text-dark mb-2">{{ form.name }}</h1>
+                <p class="text-secondary mb-3" style="font-size: 0.95rem; line-height: 1.5;">
+                    {{ form.description or 'Please complete the visitor details below to request your campus access pass.' }}
+                </p>
+                <hr class="my-3 opacity-25">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span class="text-danger small fw-semibold">* Indicates required question</span>
+                    <span class="text-muted small">Campus Visitor Pass &bull; Smart Verification</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question Card: Campus Host (if hosts available) -->
+        {% if hosts and hosts|length > 0 %}
+        <div class="gf-card">
+            <label for="host_user_id" class="gf-label">
+                Campus Host (Faculty / Staff) <span class="gf-required">*</span>
+            </label>
+            <div class="gf-help">Select your campus host or faculty contact for this visit.</div>
+            <select class="gf-input" id="host_user_id" name="host_user_id" required>
+                <option value="" disabled selected>— Select your campus host —</option>
+                {% for h in hosts %}
+                <option value="{{ h.id }}">{{ h.full_name }} ({{ h.department or h.role }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <!-- Question Card: Full Name -->
+        <div class="gf-card">
+            <label for="full_name" class="gf-label">
+                Full Legal Name <span class="gf-required">*</span>
+            </label>
+            <div class="gf-help">Enter your official name as shown on your government ID.</div>
+            <input type="text" class="gf-input" id="full_name" name="full_name" placeholder="Your answer" required maxlength="120">
+        </div>
+
+        <!-- Question Card: Organization -->
+        <div class="gf-card">
+            <label for="organization" class="gf-label">
+                Company / Institution / University
+            </label>
+            <div class="gf-help">Affiliation, workplace, college, or school.</div>
+            <input type="text" class="gf-input" id="organization" name="organization" placeholder="Your answer" maxlength="120">
+        </div>
+
+        <!-- Question Card: Phone -->
+        <div class="gf-card">
+            <label for="phone" class="gf-label">
+                Contact Phone Number
+            </label>
+            <div class="gf-help">Mobile number for urgent notifications and pass tracking.</div>
+            <input type="tel" class="gf-input" id="phone" name="phone" placeholder="Your answer" maxlength="32">
+        </div>
+
+        <!-- Question Card: Email -->
+        <div class="gf-card">
+            <label for="email" class="gf-label">
+                Email Address
+            </label>
+            <div class="gf-help">Confirmation and digital pass updates will be sent here.</div>
+            <input type="email" class="gf-input" id="email" name="email" placeholder="Your answer" maxlength="120">
+        </div>
+
+        <!-- Dynamic Form Fields from Schema -->
+        {% if schema %}
+        {% for field in schema %}
+        {% set f_key = field.field_key %}
+        {% set f_label = field.field_label or field.label or f_key %}
+        {% set is_req = field.is_required %}
+        {% set f_type = field.field_type %}
+
+        <div class="gf-card">
+            <label for="dyn__{{ f_key }}" class="gf-label">
+                {{ f_label }} {% if is_req %}<span class="gf-required">*</span>{% endif %}
+            </label>
+
+            {% if field.help_text %}
+            <div class="gf-help">{{ field.help_text }}</div>
+            {% endif %}
+
+            {% if f_type in ('image', 'file') %}
+                <!-- Dynamic Image / File Upload Input -->
+                <div class="gf-upload-box" onclick="document.getElementById('dyn__{{ f_key }}').click();">
+                    <input type="file" id="dyn__{{ f_key }}" name="dyn__{{ f_key }}" accept=".jpg,.jpeg,.png,.webp" style="display: none;" {% if is_req %}required{% endif %} onchange="handleDynamicImagePreview(this, 'dyn_preview_{{ f_key }}', 'dyn_name_{{ f_key }}')">
+                    <div id="dyn_placeholder_{{ f_key }}">
+                        <i class="bi bi-cloud-arrow-up text-primary fs-2 d-block mb-1"></i>
+                        <span class="fw-semibold text-primary" style="font-size: 0.9rem;">Click to upload image</span>
+                        <div class="text-muted small mt-1">Supported formats: JPG, PNG, WEBP (Max 5MB)</div>
+                    </div>
+                    <div id="dyn_preview_container_{{ f_key }}" class="d-none mt-2">
+                        <img id="dyn_preview_{{ f_key }}" src="#" alt="Uploaded Preview" class="img-thumbnail rounded shadow-sm" style="max-height: 140px; max-width: 100%; object-fit: contain;">
+                        <div id="dyn_name_{{ f_key }}" class="small text-muted mt-1 fw-medium"></div>
+                    </div>
+                </div>
+
+            {% elif f_type == 'textarea' %}
+                <textarea class="gf-input" id="dyn__{{ f_key }}" name="dyn__{{ f_key }}" rows="3" placeholder="Your answer" {% if is_req %}required{% endif %}></textarea>
+
+            {% elif f_type in ('select', 'dropdown') %}
+                <select class="gf-input" id="dyn__{{ f_key }}" name="dyn__{{ f_key }}" {% if is_req %}required{% endif %}>
+                    <option value="" disabled selected>Choose</option>
+                    {% for opt in field.get('options', []) %}
+                    <option value="{{ opt }}">{{ opt }}</option>
+                    {% endfor %}
+                </select>
+
+            {% elif f_type == 'checkbox' %}
+                <div class="form-check mt-1">
+                    <input class="form-check-input" type="checkbox" id="dyn__{{ f_key }}" name="dyn__{{ f_key }}" value="true" {% if is_req %}required{% endif %} style="cursor: pointer; width: 1.25rem; height: 1.25rem;">
+                    <label class="form-check-label ms-2 text-dark" for="dyn__{{ f_key }}" style="cursor: pointer; padding-top: 2px;">
+                        Yes / Confirm
+                    </label>
+                </div>
+
+            {% else %}
+                <input type="{{ f_type }}" class="gf-input" id="dyn__{{ f_key }}" name="dyn__{{ f_key }}" placeholder="Your answer" {% if is_req %}required{% endif %}>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <!-- Identity Photo (Passport Style) -->
+        <div class="gf-card">
+            <label for="photo" class="gf-label">
+                Identity Photo (Passport Style)
+            </label>
+            <div class="gf-help">Front-facing clear portrait photo for campus security badge and gate verification.</div>
+
+            <div class="row align-items-center g-3">
+                <div class="col-sm-8">
+                    <div class="gf-upload-box py-3" onclick="document.getElementById('photo').click();">
+                        <input type="file" id="photo" name="photo" accept=".jpg,.jpeg,.png,.webp" style="display: none;">
+                        <i class="bi bi-camera text-primary fs-3 d-block mb-1"></i>
+                        <span class="fw-semibold text-primary" style="font-size: 0.9rem;">Upload photo</span>
+                        <div class="text-muted small mt-1">JPG, PNG, or WEBP up to 5MB</div>
+                    </div>
+                </div>
+                <div class="col-sm-4 text-center">
+                    <div class="border rounded-3 p-1 bg-light d-inline-block shadow-sm" style="width: 110px; height: 130px; overflow: hidden; position: relative;">
+                        <img id="photo-preview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="Photo Preview" class="img-fluid rounded-2" style="display: none; object-fit: cover; width: 100%; height: 100%;">
+                        <div id="photo-placeholder" style="display: flex; height: 100%; flex-direction: column; align-items: center; justify-content: center; color: #64748b; padding: 0.5rem;">
+                            <i class="bi bi-person-bounding-box fs-2"></i>
+                            <span style="font-size: 11px;" class="mt-1">Preview</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit & Actions Row -->
+        <div class="gf-actions-row">
+            <div>
+                {% if is_preview %}
+                <button type="button" class="btn btn-secondary px-4 py-2 fw-semibold rounded-pill" disabled id="btn-submit-registration">
+                    <i class="bi bi-eye me-1"></i> Preview Mode (Submissions Disabled)
+                </button>
+                {% else %}
+                <button type="submit" class="btn btn-primary px-4 py-2 fw-semibold rounded-pill shadow-sm" id="btn-submit-registration" style="background: #6366f1; border-color: #6366f1;">
+                    Submit
+                </button>
+                {% endif %}
+                <button type="button" class="btn btn-link text-decoration-none text-muted small ms-2" onclick="document.getElementById('registration-form').reset(); clearAllPreviews();">
+                    Clear form
+                </button>
+            </div>
+            <div class="text-muted small">
+                Never submit passwords through this form.
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+function handleDynamicImagePreview(input, previewImgId, nameId) {
+    const file = input.files[0];
+    const previewImg = document.getElementById(previewImgId);
+    const nameEl = document.getElementById(nameId);
+    const container = previewImg ? previewImg.closest('.d-none') || previewImg.parentElement : null;
+
+    if (file) {
+        if (file.size > 5 * 1024 * 1024) {
+            alert("Selected image exceeds 5MB limit. Please select a smaller photo.");
+            input.value = "";
+            if (previewImg) previewImg.src = "#";
+            if (container) container.classList.add('d-none');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            if (previewImg) {
+                previewImg.src = e.target.result;
+            }
+            if (nameEl) {
+                nameEl.textContent = file.name;
+            }
+            if (container) {
+                container.classList.remove('d-none');
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function clearAllPreviews() {
+    const photoPreview = document.getElementById('photo-preview');
+    const photoPlaceholder = document.getElementById('photo-placeholder');
+    if (photoPreview && photoPlaceholder) {
+        photoPreview.src = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\'/%3E';
+        photoPreview.style.display = 'none';
+        photoPlaceholder.style.display = 'flex';
+    }
+    document.querySelectorAll('[id^="dyn_preview_container_"]').forEach(el => el.classList.add('d-none'));
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const photoInput = document.getElementById('photo');
+    const preview = document.getElementById('photo-preview');
+    const placeholder = document.getElementById('photo-placeholder');
+
+    if (photoInput) {
+        photoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (file.size > 5 * 1024 * 1024) {
+                    alert("Selected photo exceeds 5MB limit. Please select a smaller photo.");
+                    photoInput.value = "";
+                    preview.style.display = 'none';
+                    placeholder.style.display = 'flex';
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    preview.src = evt.target.result;
+                    preview.style.display = 'block';
+                    placeholder.style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.style.display = 'none';
+                placeholder.style.display = 'flex';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
