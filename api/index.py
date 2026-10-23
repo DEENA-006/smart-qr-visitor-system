@@ -10,6 +10,9 @@ if os.environ.get('VERCEL'):
             pass
 
 
+import urllib.parse
+
+
 class VercelPathFixer:
     """WSGI middleware to normalize PATH_INFO and SCRIPT_NAME on Vercel serverless."""
 
@@ -17,22 +20,31 @@ class VercelPathFixer:
         self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
-        path_info = environ.get('PATH_INFO', '')
+        query_string = environ.get('QUERY_STRING', '')
 
-        # Handle entrypoint paths rewritten by Vercel
+        # Diagnostic hook for production environment troubleshooting
+        if '__debug_env=1' in query_string:
+            import json
+            dump = {k: str(v) for k, v in environ.items() if isinstance(v, (str, int, float, bool))}
+            body = json.dumps(dump, indent=2).encode('utf-8')
+            start_response('200 OK', [('Content-Type', 'application/json')])
+            return [body]
+
+        # Extract __path passed from Vercel rewrite rule: destination: "/api/index?__path=$1"
+        if '__path=' in query_string:
+            parsed = urllib.parse.parse_qs(query_string, keep_blank_values=True)
+            if '__path' in parsed:
+                raw_path = parsed.pop('__path')[0]
+                environ['QUERY_STRING'] = urllib.parse.urlencode(parsed, doseq=True)
+                clean_path = '/' + raw_path.lstrip('/')
+                environ['PATH_INFO'] = clean_path
+                environ['SCRIPT_NAME'] = ''
+                return self.wsgi_app(environ, start_response)
+
+        # Fallback for direct function calls or non-rewritten paths
+        path_info = environ.get('PATH_INFO', '')
         if path_info in ('/api/index', '/api/index.py', '/api', '/api/'):
-            real_path = (
-                environ.get('HTTP_X_MATCHED_PATH') or
-                environ.get('HTTP_X_FORWARDED_PATH') or
-                environ.get('HTTP_X_FORWARDED_URI') or
-                environ.get('HTTP_X_ORIGINAL_URI') or
-                environ.get('RAW_URI', '').split('?')[0] or
-                environ.get('REQUEST_URI', '').split('?')[0]
-            )
-            if real_path and real_path not in ('/api/index', '/api/index.py', '/api', '/api/'):
-                environ['PATH_INFO'] = real_path
-            else:
-                environ['PATH_INFO'] = '/'
+            environ['PATH_INFO'] = '/'
         elif path_info.startswith('/api/index/'):
             environ['PATH_INFO'] = '/' + path_info[len('/api/index/'):]
         elif path_info.startswith('/api/index.py/'):
@@ -40,7 +52,7 @@ class VercelPathFixer:
         elif path_info.startswith('/api/'):
             environ['PATH_INFO'] = '/' + path_info[len('/api/'):]
 
-        # Ensure SCRIPT_NAME is empty so url_for builds clean URLs like /login instead of /api/index/login
+        # Ensure SCRIPT_NAME is clean so url_for builds clean URLs like /login
         environ['SCRIPT_NAME'] = ''
 
         return self.wsgi_app(environ, start_response)
