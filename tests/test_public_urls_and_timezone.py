@@ -210,3 +210,25 @@ def test_unpublished_and_archived_form_access_denied(client, db, admin_user):
     res_invalid = client.get('/register/FORM-NONEXISTENT-TOKEN')
     assert res_invalid.status_code == 404
 
+
+def test_public_url_rejects_rogue_and_invalid_domains(app, db, admin_user):
+    """Test that rogue domains (like Smart_QR_tracking or domains with underscores) are rejected."""
+    with app.app_context():
+        form, _ = FormService.create_form(
+            name='Sanitization Test',
+            visit_type=VisitType.GENERAL,
+            creator_user=admin_user
+        )
+        # Attempt to inject rogue domain with underscore
+        app.config['PUBLIC_BASE_URL'] = 'https://Smart_QR_tracking.vercel.app'
+        url = form.get_public_url()
+        assert 'Smart_QR_tracking' not in url
+        assert 'smart_qr_tracking' not in url
+
+    # Inside live request context on smart-qr-visitor-system.vercel.app
+    with app.test_request_context('/', base_url='https://smart-qr-visitor-system.vercel.app'):
+        app.config['PUBLIC_BASE_URL'] = 'https://Smart_QR_tracking.vercel.app'
+        url = form.get_public_url()
+        assert url == f"https://smart-qr-visitor-system.vercel.app/register/{form.public_token}"
+
+

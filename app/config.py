@@ -61,7 +61,12 @@ class Config:
     RATE_LIMIT_GATE = os.environ.get('RATE_LIMIT_GATE', '60/minute')
 
     # Public Base URL for generated external links (e.g. https://your-project.vercel.app)
-    PUBLIC_BASE_URL = os.environ.get('PUBLIC_BASE_URL', '').strip().rstrip('/')
+    _raw_base = os.environ.get('PUBLIC_BASE_URL', '').strip().rstrip('/')
+    if 'smart_qr_tracking' in _raw_base.lower() or '_' in _raw_base.split('://')[-1].split('/')[0]:
+        _raw_base = ''
+    if not _raw_base and os.environ.get('VERCEL'):
+        _raw_base = 'https://smart-qr-visitor-system.vercel.app'
+    PUBLIC_BASE_URL = _raw_base
 
     # Logging
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')

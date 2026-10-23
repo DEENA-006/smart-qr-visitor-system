@@ -63,9 +63,9 @@ class RegistrationForm(db.Model):
     def get_public_url(self, external: bool = True) -> str:
         """
         Generates canonical public registration URL for this form.
-        - Respects PUBLIC_BASE_URL environment variable and Flask configuration.
-        - In production, enforces HTTPS and canonical domain (never outputs localhost or preview URLs).
-        - In local development without PUBLIC_BASE_URL, falls back to request host or http://localhost:5000.
+        - Prioritizes canonical production domain: https://smart-qr-visitor-system.vercel.app.
+        - In production, enforces HTTPS and verified canonical host (strictly rejects rogue or misconfigured test URLs like Smart_QR_tracking).
+        - In local development without configured base, falls back to request host or http://localhost:5000.
         - Generates the unique public unauthenticated URL: /register/<public_token>.
         """
         import os
@@ -83,11 +83,25 @@ class RegistrationForm(db.Model):
         if not external:
             return path
 
+        def _is_safe_canonical_base(url: str) -> bool:
+            if not url:
+                return False
+            u = url.strip().lower()
+            if 'smart_qr_tracking' in u or 'smart-qr-tracking' in u:
+                return False
+            # Reject hostnames with invalid characters like underscores (RFC 1123 violation that breaks SSL certs)
+            host_part = u.split('://')[-1].split('/')[0].split(':')[0]
+            if '_' in host_part or not host_part:
+                return False
+            return True
+
         base_url = ""
         is_prod = False
 
         if current_app:
-            base_url = (current_app.config.get('PUBLIC_BASE_URL') or '').strip().rstrip('/')
+            raw_app_base = (current_app.config.get('PUBLIC_BASE_URL') or '').strip().rstrip('/')
+            if _is_safe_canonical_base(raw_app_base):
+                base_url = raw_app_base
             env = (current_app.config.get('ENV') or '').lower()
             is_prod = (
                 env == 'production' or 
@@ -95,7 +109,9 @@ class RegistrationForm(db.Model):
             )
 
         if not base_url:
-            base_url = os.environ.get('PUBLIC_BASE_URL', '').strip().rstrip('/')
+            raw_env_base = os.environ.get('PUBLIC_BASE_URL', '').strip().rstrip('/')
+            if _is_safe_canonical_base(raw_env_base):
+                base_url = raw_env_base
 
         # Check environment variable overrides for production
         env_mode = (os.environ.get('FLASK_ENV') or os.environ.get('APP_ENV') or '').lower()
@@ -106,10 +122,23 @@ class RegistrationForm(db.Model):
         if not base_url:
             vercel_prod = os.environ.get('VERCEL_PROJECT_PRODUCTION_URL')
             vercel_url = os.environ.get('VERCEL_URL')
-            if vercel_prod:
+            if vercel_prod and _is_safe_canonical_base(vercel_prod):
                 base_url = f"https://{vercel_prod.strip().rstrip('/')}"
-            elif vercel_url:
+            elif vercel_url and _is_safe_canonical_base(vercel_url):
                 base_url = f"https://{vercel_url.strip().rstrip('/')}"
+
+        # If inside a live request context:
+        if has_request_context():
+            req_host = request.host
+            # If the user is browsing on smart-qr-visitor-system.vercel.app, ALWAYS use canonical domain
+            if req_host and 'smart-qr-visitor-system' in req_host.lower():
+                return f"https://smart-qr-visitor-system.vercel.app{path}"
+
+            # If request is on a production cloud host (e.g. *.vercel.app or custom domain)
+            if req_host and not any(lh in req_host for lh in ('localhost', '127.0.0.1', '0.0.0.0')):
+                if not base_url or 'localhost' in base_url or '127.0.0.1' in base_url:
+                    scheme = 'https' if (request.is_secure or request.headers.get('X-Forwarded-Proto') == 'https' or is_prod) else request.scheme
+                    return f"{scheme}://{req_host}{path}"
 
         if is_prod:
             # Enforce HTTPS and canonical domain in production

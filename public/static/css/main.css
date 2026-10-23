@@ -972,18 +972,34 @@ body.drawer-open {
 
 .admin-grid-layout {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   gap: var(--space-6);
   align-items: start;
   width: 100%;
+  max-width: 100%;
+}
+
+.admin-grid-layout > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-grid-layout > .card {
+  overflow: hidden;
 }
 
 .scanner-layout-grid {
   display: grid;
-  grid-template-columns: 1fr 1.2fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
   gap: var(--space-6);
   margin-bottom: var(--space-8);
   width: 100%;
+  max-width: 100%;
+}
+
+.scanner-layout-grid > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .modal-context-grid {
@@ -1019,6 +1035,15 @@ body.drawer-open {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 1200px) {
+  .admin-grid-layout {
+    grid-template-columns: 1fr;
+  }
+  .scanner-layout-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 992px) {

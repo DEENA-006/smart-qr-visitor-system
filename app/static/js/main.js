@@ -220,8 +220,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // 6. Public Form Link Sharing & Copying (Issue 2 Canonical URL handling)
+  // 6. Public Form Link Sharing & Copying (Canonical URL handling)
+  function normalizePublicFormUrl(rawUrl) {
+    if (!rawUrl) return rawUrl;
+    try {
+      if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+        const parsed = new URL(rawUrl);
+        // If domain has underscores, contains rogue tracking host, or differs from active site
+        if (parsed.hostname.includes('smart_qr_tracking') || 
+            parsed.hostname.includes('smart-qr-tracking') || 
+            parsed.hostname.includes('_') ||
+            (window.location.hostname.includes('smart-qr-visitor-system') && parsed.hostname !== window.location.hostname)) {
+          return window.location.origin + parsed.pathname + parsed.search;
+        }
+      }
+    } catch(e) {}
+    return rawUrl;
+  }
+
   window.copyPublicFormLink = async function(url, btnElement) {
+    url = normalizePublicFormUrl(url);
     if (!url) return false;
     let succeeded = false;
 
@@ -278,6 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.sharePublicFormLink = async function(url, title, btnElement) {
+    url = normalizePublicFormUrl(url);
     if (!url) return;
 
     // Use Web Share API if supported on device (mobile Safari, Android Chrome, etc.)
@@ -298,4 +317,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fallback to copying to clipboard
     window.copyPublicFormLink(url, btnElement);
   };
+
+  // Sanitize any existing public form URLs in the DOM on load
+  const publicFormInput = document.getElementById('publicFormUrl');
+  if (publicFormInput && publicFormInput.value) {
+    publicFormInput.value = normalizePublicFormUrl(publicFormInput.value);
+  }
+  const openLiveBtn = document.getElementById('btn-open-live-form');
+  if (openLiveBtn && openLiveBtn.href) {
+    openLiveBtn.href = normalizePublicFormUrl(openLiveBtn.href);
+  }
+  document.querySelectorAll('a[title="Open Public Registration Form"]').forEach(a => {
+    if (a.href) a.href = normalizePublicFormUrl(a.href);
+  });
 });
