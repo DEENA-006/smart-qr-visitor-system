@@ -125,4 +125,8 @@ def create_app(config_name: str | None = None) -> Flask:
         db.session.rollback()
         return render_template('errors/500.html'), 500
 
+    # Ensure proxy headers (X-Forwarded-For, X-Forwarded-Proto, X-Forwarded-Host) are respected on Vercel/cloud proxies
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
     return app

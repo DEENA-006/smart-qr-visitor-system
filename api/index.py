@@ -1,11 +1,13 @@
 import os
 from run import app, db
 
-# Auto-initialize database tables if running on Vercel and tables do not exist
+# Auto-initialize database tables and default accounts if running on Vercel
 if os.environ.get('VERCEL'):
     with app.app_context():
         try:
             db.create_all()
+            from app.services.auth_service import AuthService
+            AuthService.ensure_default_accounts()
         except Exception:
             pass
 

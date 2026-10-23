@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timezone
 from functools import wraps
 from flask import request, redirect, url_for, flash, abort
@@ -9,8 +10,68 @@ from app.services.audit_service import AuditService
 
 
 class AuthService:
-    @staticmethod
-    def authenticate_user(identifier: str, password: str) -> tuple[User | None, str | None]:
+    @classmethod
+    def ensure_default_accounts(cls) -> int:
+        """
+        Ensures default staff accounts exist (Admin, Faculty, Security).
+        Creates them if missing. Idempotent and safe across multi-instance cold starts.
+        """
+        seeded_accounts = [
+            {
+                'username': 'admin',
+                'email': 'admin@campus.edu',
+                'full_name': 'Campus Administrator',
+                'role': UserRole.ADMIN,
+                'password': os.environ.get('DEFAULT_ADMIN_PASSWORD', 'Admin@123'),
+                'department': 'Administration'
+            },
+            {
+                'username': 'faculty',
+                'email': 'faculty@campus.edu',
+                'full_name': 'Dr. Sarah Jenkins',
+                'role': UserRole.FACULTY,
+                'password': os.environ.get('DEFAULT_FACULTY_PASSWORD', 'Faculty@123'),
+                'department': 'Computer Science & Engineering'
+            },
+            {
+                'username': 'security',
+                'email': 'security@campus.edu',
+                'full_name': 'Officer Marcus Reed',
+                'role': UserRole.SECURITY,
+                'password': os.environ.get('DEFAULT_SECURITY_PASSWORD', 'Security@123'),
+                'department': 'Main Campus Security Desk'
+            }
+        ]
+
+        created_count = 0
+        for acc in seeded_accounts:
+            existing = User.query.filter(
+                (db.func.lower(User.username) == acc['username'].lower()) |
+                (db.func.lower(User.email) == acc['email'].lower())
+            ).first()
+            if not existing:
+                user = User(
+                    username=acc['username'],
+                    email=acc['email'],
+                    full_name=acc['full_name'],
+                    role=acc['role'],
+                    department=acc['department'],
+                    is_active=True
+                )
+                user.set_password(acc['password'])
+                db.session.add(user)
+                created_count += 1
+
+        if created_count > 0:
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
+        return created_count
+
+    @classmethod
+    def authenticate_user(cls, identifier: str, password: str) -> tuple[User | None, str | None]:
         """
         Validates credentials and logs in the user.
         Accepts username or email.
@@ -24,6 +85,20 @@ class AuthService:
             (db.func.lower(User.username) == identifier) | 
             (db.func.lower(User.email) == identifier)
         ).first()
+
+        # Self-healing fallback: If user was not found, check if default accounts need provisioning
+        if not user:
+            default_identifiers = (
+                'admin', 'admin@campus.edu',
+                'faculty', 'faculty@campus.edu',
+                'security', 'security@campus.edu'
+            )
+            if identifier in default_identifiers or User.query.first() is None:
+                cls.ensure_default_accounts()
+                user = User.query.filter(
+                    (db.func.lower(User.username) == identifier) | 
+                    (db.func.lower(User.email) == identifier)
+                ).first()
 
         ip = request.remote_addr if request else None
         ua = str(request.user_agent.string)[:255] if request and request.user_agent else None
