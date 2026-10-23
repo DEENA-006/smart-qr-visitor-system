@@ -8,11 +8,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const toggleBtn = document.getElementById('mobileMenuToggle');
   const closeBtn = document.getElementById('sidebarCloseBtn');
   const sidebar = document.getElementById('appSidebar');
+  const backdrop = document.getElementById('sidebarBackdrop');
   const appWrapper = document.querySelector('.app-wrapper');
 
   function openSidebar() {
     if (sidebar) {
       sidebar.classList.add('open');
+      if (backdrop) backdrop.classList.add('active');
+      document.body.classList.add('drawer-open');
       if (appWrapper) appWrapper.classList.remove('sidebar-collapsed');
       try { localStorage.setItem('vms_sidebar_state', 'open'); } catch(e){}
     }
@@ -21,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function closeSidebar() {
     if (sidebar) {
       sidebar.classList.remove('open');
+      if (backdrop) backdrop.classList.remove('active');
+      document.body.classList.remove('drawer-open');
       if (appWrapper) appWrapper.classList.add('sidebar-collapsed');
       try { localStorage.setItem('vms_sidebar_state', 'closed'); } catch(e){}
     }
@@ -29,7 +34,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function toggleSidebar() {
     if (!sidebar) return;
     if (window.innerWidth <= 992) {
-      sidebar.classList.toggle('open');
+      if (sidebar.classList.contains('open')) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
     } else {
       if (appWrapper && appWrapper.classList.contains('sidebar-collapsed')) {
         openSidebar();
@@ -53,12 +62,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  if (backdrop) {
+    backdrop.addEventListener('click', () => {
+      closeSidebar();
+    });
+  }
+
   // Close when clicking outside on mobile
   document.addEventListener('click', (e) => {
     if (sidebar && sidebar.classList.contains('open') && window.innerWidth <= 992) {
       if (!sidebar.contains(e.target) && e.target !== toggleBtn && (!toggleBtn || !toggleBtn.contains(e.target))) {
-        sidebar.classList.remove('open');
+        closeSidebar();
       }
+    }
+  });
+
+  // Handle window resizing to clean up mobile overlay
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 992) {
+      if (backdrop) backdrop.classList.remove('active');
+      document.body.classList.remove('drawer-open');
+      if (sidebar) sidebar.classList.remove('open');
     }
   });
 
@@ -194,5 +218,84 @@ document.addEventListener('DOMContentLoaded', () => {
       passInput.value = password;
       identInput.focus();
     }
+  };
+
+  // 6. Public Form Link Sharing & Copying (Issue 2 Canonical URL handling)
+  window.copyPublicFormLink = async function(url, btnElement) {
+    if (!url) return false;
+    let succeeded = false;
+
+    // A. Attempt modern Clipboard API
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(url);
+        succeeded = true;
+      } catch (err) {
+        console.warn('navigator.clipboard write failed, falling back:', err);
+      }
+    }
+
+    // B. Fallback using a temporary input element
+    if (!succeeded) {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = url;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        succeeded = document.execCommand('copy');
+        document.body.removeChild(textarea);
+      } catch (err) {
+        console.error('Fallback clipboard copy failed:', err);
+      }
+    }
+
+    // C. Visual verification feedback on the button
+    if (btnElement) {
+      const origHtml = btnElement.dataset.origHtml || btnElement.innerHTML;
+      btnElement.dataset.origHtml = origHtml;
+      if (succeeded) {
+        btnElement.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle; margin-right:4px;">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>Copied!
+        `;
+        btnElement.style.borderColor = 'var(--color-success)';
+      } else {
+        btnElement.innerHTML = 'Selected';
+      }
+      setTimeout(() => {
+        btnElement.innerHTML = origHtml;
+        btnElement.style.borderColor = '';
+      }, 2500);
+    }
+
+    return succeeded;
+  };
+
+  window.sharePublicFormLink = async function(url, title, btnElement) {
+    if (!url) return;
+
+    // Use Web Share API if supported on device (mobile Safari, Android Chrome, etc.)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: title || 'Campus Visitor Registration',
+          text: 'Please complete your campus visitor registration using this official link:',
+          url: url
+        });
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return; // User closed sheet
+        console.warn('Web Share API error, falling back to copy:', err);
+      }
+    }
+
+    // Fallback to copying to clipboard
+    window.copyPublicFormLink(url, btnElement);
   };
 });

@@ -53,7 +53,7 @@
 </div>
 
 <!-- Add Staff & Filters Layout -->
-<div style="display: grid; grid-template-columns: 1fr 340px; gap: var(--space-6); align-items: start;">
+<div class="admin-grid-layout">
   <!-- Left: Staff Table with Search/Filter -->
   <div class="card">
     <div class="card-header" style="flex-wrap: wrap; gap: var(--space-4);">
@@ -63,30 +63,32 @@
       </div>
 
       <!-- Filters Form -->
-      <form method="GET" action="{{ url_for('admin.staff_list') }}" style="display:flex; gap:var(--space-2); flex-wrap:wrap;">
+      <form method="GET" action="{{ url_for('admin.staff_list') }}" style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center; width:100%; max-width:620px;">
         <input 
           type="text" 
           name="q" 
           class="form-control" 
           placeholder="Search name, user, dept..." 
           value="{{ search_query or '' }}" 
-          style="width: 180px; padding: 6px 10px; font-size:13px;"
+          style="flex:1 1 160px; min-width:0; width:auto; padding: 6px 10px; font-size:13px;"
         >
-        <select name="role" class="form-control" style="width: 120px; padding: 6px 10px; font-size:13px;">
+        <select name="role" class="form-control" style="flex:1 1 110px; min-width:0; width:auto; padding: 6px 10px; font-size:13px;">
           <option value="">All Roles</option>
           {% for r in roles %}
             <option value="{{ r }}" {% if role_filter == r %}selected{% endif %}>{{ r }}</option>
           {% endfor %}
         </select>
-        <select name="status" class="form-control" style="width: 110px; padding: 6px 10px; font-size:13px;">
+        <select name="status" class="form-control" style="flex:1 1 100px; min-width:0; width:auto; padding: 6px 10px; font-size:13px;">
           <option value="">All Status</option>
           <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
           <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
         </select>
-        <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
-        {% if search_query or role_filter or status_filter %}
-          <a href="{{ url_for('admin.staff_list') }}" class="btn btn-secondary btn-sm" title="Clear Filters">&times;</a>
-        {% endif %}
+        <div style="display:flex; gap:var(--space-2);">
+          <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+          {% if search_query or role_filter or status_filter %}
+            <a href="{{ url_for('admin.staff_list') }}" class="btn btn-secondary btn-sm" title="Clear Filters">&times;</a>
+          {% endif %}
+        </div>
       </form>
     </div>
 

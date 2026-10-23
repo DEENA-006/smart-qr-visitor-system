@@ -85,16 +85,12 @@ def create_app(config_name: str | None = None) -> Flask:
             """Returns canonical public shareable URL for a published form."""
             if hasattr(form, 'get_public_url'):
                 return form.get_public_url(external=external)
-            token = getattr(form, 'public_token', None) or getattr(form, 'visit_type', 'GENERAL')
-            path = f"/register/{token}"
-            base_url = (app.config.get('PUBLIC_BASE_URL') or '').strip().rstrip('/')
-            if base_url:
-                if not base_url.startswith(('http://', 'https://')):
-                    base_url = f"https://{base_url}"
-                return f"{base_url}{path}"
-            if has_request_context():
-                return request.host_url.rstrip('/') + path
-            return f"http://localhost:5000{path}"
+            from app.models.registration_form import RegistrationForm
+            dummy = RegistrationForm(
+                public_token=getattr(form, 'public_token', None),
+                visit_type=getattr(form, 'visit_type', 'GENERAL')
+            )
+            return dummy.get_public_url(external=external)
 
         return {
             'now': datetime.now(timezone.utc),

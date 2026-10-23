@@ -20,7 +20,7 @@
   </div>
 </div>
 
-<div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: var(--space-6); margin-bottom: var(--space-8);">
+<div class="scanner-layout-grid">
   <!-- Scanner Station Panel -->
   <div class="card" style="padding: var(--space-6);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-4);">
@@ -234,7 +234,7 @@
         </div>
 
         <!-- Readonly Context Banner: Distinguishes system-controlled from editable fields -->
-        <div style="background: var(--color-surface-secondary); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-3); font-size: 12px; color: var(--color-text-secondary); display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2);">
+        <div class="modal-context-grid">
           <div><strong>Visit Category:</strong> <span id="modalCtxCategory">—</span></div>
           <div><strong>Department:</strong> <span id="modalCtxDept">—</span></div>
           <div style="grid-column: span 2; font-size: 11.5px; color: var(--color-text-muted); border-top: 1px dashed var(--color-border); padding-top: 4px; margin-top: 2px;">
@@ -252,8 +252,8 @@
           <small class="form-hint">Matches physical government ID presented at desk.</small>
         </div>
 
-        <!-- Phone & Email (2-col) -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+        <!-- Phone & Email (2-col responsive) -->
+        <div class="modal-form-row-2col">
           <div class="form-group" style="margin-bottom: 0;">
             <label for="editVisitorPhone" class="form-label" style="font-weight: 600;">
               Mobile Phone <span style="color: var(--color-danger);">*</span>

@@ -5,7 +5,7 @@
 {% block page_subheading %}Design, version, and publish custom intake forms for distinct visit categories.{% endblock %}
 
 {% block content %}
-<div style="display: grid; grid-template-columns: 1fr 340px; gap: var(--space-6); align-items: start;">
+<div class="admin-grid-layout">
   <!-- Left: Configured Forms List -->
   <div class="card">
     <div class="card-header">
@@ -60,16 +60,19 @@
                 {% endif %}
               </td>
               <td style="text-align:right;">
-                <div style="display:inline-flex; gap:6px; align-items:center;">
+                <div style="display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
                   {% if pub_ver and form.public_token %}
                     <a href="{{ public_form_url(form) }}" target="_blank" class="btn btn-outline-primary btn-sm" style="padding:4px 8px;" title="Open Public Registration Form">
-                      Link ↗
+                      Open ↗
                     </a>
+                    <button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px;" title="Copy Public Registration Link" onclick="window.copyPublicFormLink('{{ public_form_url(form) }}', this);">
+                      Copy
+                    </button>
                   {% endif %}
                   {% set latest_ver = form.versions.first() %}
                   {% if latest_ver %}
-                    <a href="{{ url_for('admin.form_builder', form_id=form.id, version_id=latest_ver.id) }}" class="btn btn-secondary btn-sm" style="padding:4px 8px;">
-                      Open Builder &rarr;
+                    <a href="{{ url_for('admin.form_builder', form_id=form.id, version_id=latest_ver.id) }}" class="btn btn-primary btn-sm" style="padding:4px 8px;">
+                      Builder &rarr;
                     </a>
                   {% endif %}
                 </div>

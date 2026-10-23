@@ -132,3 +132,81 @@ def test_qr_code_rgb_format(app, db, admin_user):
     assert img.format == 'PNG'
     assert img.mode == 'RGB'
     assert img.size[0] >= 100 and img.size[1] >= 100
+
+
+def test_public_url_production_strict_never_localhost(app, db, admin_user, monkeypatch):
+    """Test production mode strictly never produces localhost even if request host is 127.0.0.1 or base is localhost."""
+    monkeypatch.setenv('VERCEL', '1')
+    with app.test_request_context('/', base_url='http://127.0.0.1:5000'):
+        app.config['PUBLIC_BASE_URL'] = 'http://localhost:5000'
+        form, _ = FormService.create_form(
+            name='Strict Prod Form',
+            visit_type=VisitType.GENERAL,
+            creator_user=admin_user
+        )
+        url = form.get_public_url()
+        assert not url.startswith('http://localhost')
+        assert not url.startswith('http://127.0.0.1')
+        assert url.startswith('https://')
+        assert url.endswith(f"/register/{form.public_token}")
+
+
+def test_public_form_unauthenticated_submission(client, db, admin_user, faculty_user):
+    """Test full unauthenticated public visitor submission saves visitor and visit request record."""
+    from app.models.visit import VisitRequest
+    from app.models.visitor import Visitor
+
+    form, err = FormService.create_form(
+        name='Public Guest Intake',
+        visit_type=VisitType.GENERAL,
+        creator_user=admin_user
+    )
+    assert err is None
+    version = form.versions.first()
+    FormService.publish_version(form.id, version.id, admin_user)
+
+    # Submit without any login session
+    post_data = {
+        'full_name': 'Dr. Arthur Conan',
+        'email': 'arthur@bakerstreet.org',
+        'phone': '+91 9876543210',
+        'organization': 'Baker Street Foundation',
+        'purpose': 'Consultation with campus researchers',
+        'dyn__purpose_detail': 'Consultation with campus researchers on AI forensics',
+        'host_user_id': str(faculty_user.id)
+    }
+    response = client.post(
+        f'/register/{form.public_token}',
+        data=post_data,
+        follow_redirects=True
+    )
+    assert response.status_code == 200
+
+    # Verify database persistence
+    visitor = Visitor.query.filter_by(phone='+91 9876543210').first()
+    assert visitor is not None
+    assert visitor.full_name == 'Dr. Arthur Conan'
+
+    req = VisitRequest.query.filter_by(visitor_id=visitor.id).first()
+    assert req is not None
+    assert req.public_reference.startswith('REQ-')
+    assert req.host_user_id == faculty_user.id
+    assert req.status == 'PENDING_APPROVAL'
+
+
+def test_unpublished_and_archived_form_access_denied(client, db, admin_user):
+    """Test unpublished draft tokens and invalid form links return 404."""
+    form, err = FormService.create_form(
+        name='Draft Form Only',
+        visit_type=VisitType.VIP,
+        creator_user=admin_user
+    )
+    assert err is None
+    # Never published
+    res = client.get(f'/register/{form.public_token}')
+    assert res.status_code == 404
+
+    # Invalid token returns 404
+    res_invalid = client.get('/register/FORM-NONEXISTENT-TOKEN')
+    assert res_invalid.status_code == 404
+

@@ -222,6 +222,9 @@
       {% endif %}
     </aside>
 
+    <!-- Mobile Sidebar Backdrop -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+
     <!-- Main Canvas -->
     <div class="app-main">
       <header class="app-topbar">
@@ -237,15 +240,15 @@
 
         <div class="topbar-right">
           {% if current_user.is_authenticated %}
-            <span class="badge badge-primary">
+            <span class="badge badge-primary topbar-role-badge">
               <span style="width:6px; height:6px; border-radius:50%; background:currentColor;"></span>
               {{ current_user.role }}
             </span>
             <form action="{{ url_for('auth.logout') }}" method="POST" style="display:inline;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-secondary btn-sm">
+              <button type="submit" class="btn btn-secondary btn-sm topbar-signout-btn" title="Sign out of {{ current_user.full_name }}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-                Sign out
+                <span class="topbar-signout-text">Sign out</span>
               </button>
             </form>
           {% else %}

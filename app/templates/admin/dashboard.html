@@ -61,45 +61,45 @@
     </div>
   </div>
   <div class="actions-grid">
-    <div class="action-card">
+    <a href="{{ url_for('admin.forms_list') }}" class="action-card" style="text-decoration: none;">
       <div class="action-card-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" x2="12" y1="18" y2="12"/><line x1="9" x2="15" y1="15" y2="15"/></svg>
       </div>
       <div>
-        <div style="font-weight:600; font-size:14px;">Dynamic Form Builder</div>
-        <div style="font-size:12px; color:var(--color-text-muted);">Configure visitor fields (M2)</div>
+        <div style="font-weight:600; font-size:14px; color:var(--color-text);">Dynamic Form Builder</div>
+        <div style="font-size:12px; color:var(--color-text-muted);">Configure visitor fields</div>
       </div>
-    </div>
+    </a>
 
-    <div class="action-card">
+    <a href="{{ url_for('admin.staff_list') }}" class="action-card" style="text-decoration: none;">
       <div class="action-card-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
       </div>
       <div>
-        <div style="font-weight:600; font-size:14px;">Staff Management</div>
-        <div style="font-size:12px; color:var(--color-text-muted);">Manage roles & accounts (M2)</div>
+        <div style="font-weight:600; font-size:14px; color:var(--color-text);">Staff Management</div>
+        <div style="font-size:12px; color:var(--color-text-muted);">Manage roles & accounts</div>
       </div>
-    </div>
+    </a>
 
-    <div class="action-card">
+    <a href="{{ url_for('admin.reports') }}" class="action-card" style="text-decoration: none;">
       <div class="action-card-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
       </div>
       <div>
-        <div style="font-weight:600; font-size:14px;">Campus Reports</div>
-        <div style="font-size:12px; color:var(--color-text-muted);">Audit logs & CSV exports (M5)</div>
+        <div style="font-weight:600; font-size:14px; color:var(--color-text);">Campus Reports</div>
+        <div style="font-size:12px; color:var(--color-text-muted);">Audit logs & CSV exports</div>
       </div>
-    </div>
+    </a>
 
-    <div class="action-card">
+    <a href="{{ url_for('security.emergency_list') }}" class="action-card" style="text-decoration: none;">
       <div class="action-card-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/></svg>
       </div>
       <div>
-        <div style="font-weight:600; font-size:14px;">Emergency List</div>
-        <div style="font-size:12px; color:var(--color-text-muted);">Active safety roster (M5)</div>
+        <div style="font-weight:600; font-size:14px; color:var(--color-text);">Emergency List</div>
+        <div style="font-size:12px; color:var(--color-text-muted);">Active safety roster</div>
       </div>
-    </div>
+    </a>
   </div>
 </div>
 

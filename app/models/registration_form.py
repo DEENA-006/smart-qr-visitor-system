@@ -69,10 +69,16 @@ class RegistrationForm(db.Model):
         - Generates the unique public unauthenticated URL: /register/<public_token>.
         """
         import os
-        from flask import current_app, has_request_context, request
+        from flask import current_app, has_request_context, request, url_for
 
-        token = self.public_token or self.visit_type or 'GENERAL'
+        token = self.get_public_token() if hasattr(self, 'get_public_token') else (self.public_token or self.visit_type or 'GENERAL')
+
         path = f"/register/{token}"
+        if has_request_context():
+            try:
+                path = url_for('visitors.register_form', visit_type=token, _external=False)
+            except Exception:
+                path = f"/register/{token}"
 
         if not external:
             return path
@@ -96,9 +102,14 @@ class RegistrationForm(db.Model):
         if env_mode == 'production' or os.environ.get('VERCEL') == '1':
             is_prod = True
 
-        # Automatic detection of Vercel canonical production domain if configured
-        if not base_url and os.environ.get('VERCEL_PROJECT_PRODUCTION_URL'):
-            base_url = f"https://{os.environ.get('VERCEL_PROJECT_PRODUCTION_URL').strip().rstrip('/')}"
+        # Automatic detection of Vercel production domain
+        if not base_url:
+            vercel_prod = os.environ.get('VERCEL_PROJECT_PRODUCTION_URL')
+            vercel_url = os.environ.get('VERCEL_URL')
+            if vercel_prod:
+                base_url = f"https://{vercel_prod.strip().rstrip('/')}"
+            elif vercel_url:
+                base_url = f"https://{vercel_url.strip().rstrip('/')}"
 
         if is_prod:
             # Enforce HTTPS and canonical domain in production
@@ -111,15 +122,14 @@ class RegistrationForm(db.Model):
                 if not any(lh in base_url for lh in ('localhost', '127.0.0.1', '0.0.0.0')):
                     return f"{base_url}{path}"
 
-            # Fallback in production if PUBLIC_BASE_URL is missing or was localhost
+            # Fallback in production from live request context if valid public host
             if has_request_context():
                 host = request.host
-                if not any(lh in host for lh in ('localhost', '127.0.0.1', '0.0.0.0')):
+                if host and not any(lh in host for lh in ('localhost', '127.0.0.1', '0.0.0.0')):
                     return f"https://{host}{path}"
 
-            # In production when no valid public host can be deduced, return default HTTPS scheme if configured
-            if base_url and not any(lh in base_url for lh in ('localhost', '127.0.0.1', '0.0.0.0')):
-                return f"{base_url}{path}"
+            # Fallback to configured Vercel production canonical deployment
+            return f"https://smart-qr-visitor-system.vercel.app{path}"
 
         # Development / Testing mode:
         if base_url:

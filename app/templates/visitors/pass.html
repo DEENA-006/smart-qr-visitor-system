@@ -154,7 +154,7 @@
             </div>
 
             <!-- High-Contrast QR Code Card with Scanner Corner Markers -->
-            <div class="qr-card-wrapper d-inline-block p-3 rounded-3 shadow-sm bg-white border" style="max-width: 260px; position: relative;">
+            <div class="qr-card-wrapper d-inline-block p-3 rounded-3 shadow-sm bg-white border" style="max-width: min(260px, 90vw); position: relative;">
               <img
                 src="{{ url_for('visitors.serve_pass_qr', public_reference=visit_request.public_reference) }}"
                 alt="Visitor Gate Entry QR Pass"
@@ -162,7 +162,7 @@
                 width="220"
                 height="220"
                 id="visitor-qr-code"
-                style="display: block; margin: 0 auto; image-rendering: pixelated; width: 220px; height: 220px;"
+                style="display: block; margin: 0 auto; image-rendering: pixelated; width: 100%; max-width: 220px; height: auto; aspect-ratio: 1/1;"
               >
             </div>
 
