@@ -118,7 +118,7 @@
               <div style="width: 120px; height: 140px; border-radius: 8px; overflow: hidden; background: #0f172a; border: 2px solid #cbd5e1; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08); display: flex; align-items: center; justify-content: center;">
                 {% if visit_request.photo_filename %}
                   <img
-                    src="{{ url_for('visitors.serve_pass_photo', public_reference=visit_request.public_reference) }}"
+                    src="{{ photo_data_uri or url_for('visitors.serve_pass_photo', public_reference=visit_request.public_reference) }}"
                     alt="Registered Photo of {{ visit_request.visitor.full_name }}"
                     style="width: 100%; height: 100%; object-fit: cover; display: block;"
                     id="visitorPassPhoto"
@@ -173,11 +173,13 @@
             <div class="qr-card-wrapper d-inline-block p-3 rounded-3 shadow-sm bg-white border" style="max-width: min(260px, 90vw); position: relative;">
               <img
                 src="{{ url_for('visitors.serve_pass_qr', public_reference=visit_request.public_reference) }}"
+                data-fallback-uri="{{ qr_data_uri or '' }}"
                 alt="Visitor Gate Entry QR Pass"
                 class="img-fluid rounded"
                 width="220"
                 height="220"
                 id="visitor-qr-code"
+                onerror="if(this.dataset.fallbackUri && this.src !== this.dataset.fallbackUri){ this.src = this.dataset.fallbackUri; }"
                 style="display: block; margin: 0 auto; image-rendering: pixelated; width: 100%; max-width: 220px; height: auto; aspect-ratio: 1/1;"
               >
             </div>
@@ -363,6 +365,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function captureAndSaveQrImage(onComplete) {
         if (!qrImg || !qrImg.src) {
             if (onComplete) onComplete(null);
+            return;
+        }
+
+        if (qrImg.src.startsWith('data:image')) {
+            savePassToLocalStorage(qrImg.src);
+            if (onComplete) onComplete(qrImg.src);
             return;
         }
 

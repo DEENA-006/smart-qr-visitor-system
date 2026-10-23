@@ -27,8 +27,7 @@
                 </div>
                 {% endif %}
 
-                {% set cred = visit_request.active_credential or visit_request.qr_credentials.first() %}
-                {% if visit_request.status == 'APPROVED' and cred %}
+                {% if visit_request.status == 'APPROVED' %}
                 <!-- Generated QR Pass Display -->
                 <div class="card border-success border-2 rounded-3 mb-4 p-4 bg-white shadow-sm text-center" id="generatedQrSection">
                     <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill mb-2 bg-success text-white small fw-bold text-uppercase">
@@ -37,11 +36,13 @@
                     <div class="p-3 bg-light rounded border d-inline-block mx-auto mb-2" style="max-width: 240px;">
                         <img
                             src="{{ url_for('visitors.serve_pass_qr', public_reference=visit_request.public_reference) }}"
+                            data-fallback-uri="{{ qr_data_uri or '' }}"
                             alt="Generated QR Pass"
                             class="img-fluid rounded"
                             width="200"
                             height="200"
                             id="confirmation-qr-img"
+                            onerror="if(this.dataset.fallbackUri && this.src !== this.dataset.fallbackUri){ this.src = this.dataset.fallbackUri; }"
                             style="display: block; margin: 0 auto; image-rendering: pixelated;"
                         >
                     </div>
@@ -227,6 +228,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function captureAndSaveQrImage(onComplete) {
         if (!qrImg || !qrImg.src) {
             if (onComplete) onComplete(null);
+            return;
+        }
+
+        if (qrImg.src.startsWith('data:image')) {
+            savePassToLocalStorage(qrImg.src);
+            if (onComplete) onComplete(qrImg.src);
             return;
         }
 
