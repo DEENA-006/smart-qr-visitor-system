@@ -51,13 +51,14 @@ class RegistrationForm(db.Model):
         return self.versions.filter_by(status=FormVersionStatus.PUBLISHED).first()
 
     @classmethod
-    def generate_public_token(cls) -> str:
+    def generate_public_token(cls, visit_type: str = 'GENERAL') -> str:
         import secrets
-        return f"FORM-{secrets.token_urlsafe(16)}"
+        vt = (visit_type or 'GENERAL').upper().strip()
+        return f"FORM-{vt}-{secrets.token_urlsafe(8)}"
 
     def get_public_token(self) -> str:
         if not self.public_token:
-            self.public_token = self.generate_public_token()
+            self.public_token = self.generate_public_token(self.visit_type)
         return self.public_token
 
     def get_public_url(self, external: bool = True) -> str:

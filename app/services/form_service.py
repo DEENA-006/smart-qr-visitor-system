@@ -58,7 +58,8 @@ class FormService:
         visit_type: str,
         description: str | None = None,
         allow_faculty_customization: bool = False,
-        creator_user: User = None
+        creator_user: User = None,
+        public_token: str | None = None
     ) -> tuple[RegistrationForm | None, str | None]:
         """Creates a registration form and initializes its version 1 in DRAFT status."""
         name = (name or '').strip()
@@ -87,8 +88,11 @@ class FormService:
             }
         } if allow_faculty_customization else {}
 
+        if not public_token:
+            public_token = RegistrationForm.generate_public_token(visit_type)
+
         form = RegistrationForm(
-            public_token=RegistrationForm.generate_public_token(),
+            public_token=public_token,
             name=name,
             visit_type=visit_type,
             description=description.strip() if description else None,
@@ -338,7 +342,8 @@ class FormService:
             visit_type=visit_type,
             description=desc,
             allow_faculty_customization=(visit_type == VisitType.ACADEMIC),
-            creator_user=admin_user
+            creator_user=admin_user,
+            public_token=f"FORM-{visit_type}"
         )
         if err or not new_form:
             return None, None
@@ -357,6 +362,7 @@ class FormService:
     def get_form_by_token_or_type(token_or_type: str) -> tuple[RegistrationForm | None, FormVersion | None]:
         """
         Resolves a registration form and its active published version by public form token or visit type.
+        Robust against serverless cold-starts and ephemeral databases across containers.
         Returns: (form, published_version). If form is not found or unpublished, returns (form, None) or (None, None).
         """
         if not token_or_type:
@@ -364,21 +370,32 @@ class FormService:
 
         token_str = str(token_or_type).strip()
 
-        # 1. First check if it matches a public_token (e.g. FORM-...)
-        if token_str.startswith('FORM-'):
-            form = RegistrationForm.query.filter_by(public_token=token_str, is_active=True).first()
-            if form:
-                return form, form.published_version
-            return None, None
-
-        # 2. Check if it matches a known visit type (e.g. OFFICIAL, GENERAL)
-        if token_str in VisitType.ALL:
-            return FormService.get_active_published_form(token_str)
-
-        # 3. Fallback search by public_token in case prefix differs
+        # 1. Exact lookup by public_token in the current database
         form = RegistrationForm.query.filter_by(public_token=token_str, is_active=True).first()
         if form:
             return form, form.published_version
+
+        # 2. Check if token_str matches a known standard visit type (e.g. OFFICIAL, GENERAL)
+        if token_str.upper() in VisitType.ALL:
+            return FormService.get_active_published_form(token_str.upper(), auto_create_default=True)
+
+        # 3. Check if token matches standard deterministic default token (e.g. FORM-GENERAL, FORM-ACADEMIC)
+        for vt in VisitType.ALL:
+            if token_str.upper() in (f"FORM-{vt}", f"FORM-{vt}-DEFAULT"):
+                return FormService.get_active_published_form(vt, auto_create_default=True)
+
+        # 4. Check if token contains a known visit type prefix (e.g. FORM-GENERAL-..., FORM-ACADEMIC-...)
+        # This resolves links across serverless lambda containers that don't share SQLite /tmp
+        for vt in VisitType.ALL:
+            if token_str.upper().startswith(f"FORM-{vt}-"):
+                return FormService.get_active_published_form(vt, auto_create_default=True)
+
+        # 5. On serverless environments (e.g. Vercel without external DB):
+        # If any token starting with FORM- was requested (e.g. legacy random tokens)
+        # fallback to the active published form for GENERAL so visitors on mobile never get 404!
+        import os
+        if os.environ.get('VERCEL') and token_str.startswith('FORM-'):
+            return FormService.get_active_published_form(VisitType.GENERAL, auto_create_default=True)
 
         return None, None
 

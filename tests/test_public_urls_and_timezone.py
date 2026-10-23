@@ -232,3 +232,25 @@ def test_public_url_rejects_rogue_and_invalid_domains(app, db, admin_user):
         assert url == f"https://smart-qr-visitor-system.vercel.app/register/{form.public_token}"
 
 
+def test_serverless_cross_container_token_resolution(client, db, monkeypatch):
+    """Test that on serverless (VERCEL=1), token lookups resolve across containers without 404."""
+    monkeypatch.setenv('VERCEL', '1')
+
+    # 1. Deterministic standard tokens (FORM-GENERAL, FORM-ACADEMIC, etc.)
+    res = client.get('/register/FORM-GENERAL')
+    assert res.status_code == 200
+    assert b'Visitor Registration' in res.data
+
+    res_acad = client.get('/register/FORM-ACADEMIC')
+    assert res_acad.status_code == 200
+
+    # 2. Token with visit_type embedded from another container (e.g. FORM-GENERAL-x8kL2m)
+    res_embed = client.get('/register/FORM-GENERAL-x8kL2m')
+    assert res_embed.status_code == 200
+
+    # 3. Arbitrary legacy token on Vercel falls back gracefully to GENERAL instead of dead 404
+    res_fallback = client.get('/register/FORM-cm962Cu9jSnpd2iYrjp_0g')
+    assert res_fallback.status_code == 200
+
+
+

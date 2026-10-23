@@ -1,13 +1,17 @@
 import os
 from run import app, db
 
-# Auto-initialize database tables and default accounts if running on Vercel
+# Auto-initialize database tables, default accounts, and standard published forms on Vercel
 if os.environ.get('VERCEL'):
     with app.app_context():
         try:
             db.create_all()
             from app.services.auth_service import AuthService
             AuthService.ensure_default_accounts()
+            from app.services.form_service import FormService
+            from app.models.visit_type import VisitType
+            for vt in VisitType.ALL:
+                FormService.ensure_default_published_form(vt)
         except Exception:
             pass
 
