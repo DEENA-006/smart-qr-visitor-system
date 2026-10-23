@@ -385,7 +385,7 @@ def serve_pass_photo(public_reference):
         abort(404)
 
     req = VisitRequest.query.filter_by(public_reference=clean_ref).first()
-    if not req:
+    if not req and not clean_ref.upper().startswith('REQ-'):
         abort(404)
 
     if req.photo_filename:
