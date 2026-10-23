@@ -44,11 +44,27 @@
             <div class="d-flex align-items-center gap-2 mb-1">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               <strong>Pending Review &bull; Host Approval</strong>
+              <div class="spinner-border spinner-border-sm text-warning ms-auto" role="status" style="width: 14px; height: 14px;"></div>
             </div>
             <p class="small mb-0" style="color: #78350f;">
               Your visit request is awaiting approval from your host (<strong>{{ visit_request.host_user.full_name if visit_request.host_user else 'Campus Host' }}</strong>). Your dynamic QR code will activate immediately upon approval.
             </p>
           </div>
+          <script>
+          (function() {
+            var checkPending = function() {
+              fetch("{{ url_for('visitors.visit_status', public_reference=visit_request.public_reference) }}")
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                  if (d && d.is_approved) {
+                    window.location.reload();
+                  }
+                })
+                .catch(function() {});
+            };
+            setInterval(checkPending, 3000);
+          })();
+          </script>
         {% elif state == 'REJECTED' %}
           <div class="alert alert-danger p-3 mb-4 rounded-3 text-start border-0" style="background: #fef2f2; color: #991b1b;" role="alert">
             <div class="d-flex align-items-center gap-2 mb-1">

@@ -146,6 +146,24 @@
                     </a>
                 </div>
 
+                {% if visit_request.status != 'APPROVED' %}
+                <script>
+                (function() {
+                    var checkApproval = function() {
+                        fetch("{{ url_for('visitors.visit_status', public_reference=visit_request.public_reference) }}")
+                            .then(function(r) { return r.json(); })
+                            .then(function(d) {
+                                if (d && d.is_approved) {
+                                    window.location.reload();
+                                }
+                            })
+                            .catch(function() {});
+                    };
+                    setInterval(checkApproval, 3000);
+                })();
+                </script>
+                {% endif %}
+
                 <div id="storage-saved-alert" class="alert alert-success mt-3 py-2 px-3 small d-none" role="alert" style="max-width: 480px; margin: 1rem auto 0 auto;">
                     <i class="bi bi-check-circle-fill me-1"></i> QR Code successfully saved to device downloads & browser local storage!
                 </div>

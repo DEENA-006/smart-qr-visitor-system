@@ -239,15 +239,16 @@ def visitor_pass(public_reference):
     elif req.status == VisitRequestStatus.CANCELLED:
         state = 'CANCELLED'
     elif req.status == VisitRequestStatus.APPROVED:
-        if not latest_cred:
-            state = 'NO_CREDENTIAL'
-        elif latest_cred.status == QRCredentialStatus.REVOKED:
+        # Guarantee active valid credential for approved requests
+        if not active_cred or not active_cred.is_valid_now():
+            active_cred = QRService.ensure_active_credential(req)
+            latest_cred = active_cred or req.qr_credentials.order_by(QRCredential.created_at.desc()).first()
+
+        if latest_cred and latest_cred.status == QRCredentialStatus.REVOKED:
             state = 'REVOKED'
-        elif latest_cred.status == QRCredentialStatus.CONSUMED:
+        elif latest_cred and latest_cred.status == QRCredentialStatus.CONSUMED:
             state = 'CONSUMED'
             has_qr = True
-        elif not latest_cred.is_valid_now():
-            state = 'EXPIRED'
         else:
             state = 'ACTIVE'
             has_qr = True
@@ -271,12 +272,26 @@ def visitor_pass(public_reference):
     return response
 
 
+@visitors_bp.route('/visitors/status/<public_reference>', methods=['GET'])
+def visit_status(public_reference):
+    """Returns JSON status of a visit request for live UI polling."""
+    from flask import jsonify
+    req = VisitRequest.query.filter_by(public_reference=public_reference).first_or_404()
+    is_approved = (req.status == VisitRequestStatus.APPROVED)
+    return jsonify({
+        'reference': req.public_reference,
+        'status': req.status,
+        'is_approved': is_approved,
+        'has_qr': is_approved
+    })
+
+
 @visitors_bp.route('/visitors/pass/<public_reference>/qr.png', methods=['GET'])
 def serve_pass_qr(public_reference):
     """
     Serves the active QR code image only when eligible, approved, and active.
-    Returns 404 for unapproved, expired, or revoked visits.
-    Sets strict no-store headers.
+    Dynamically generates on the fly if physical file is missing from serverless /tmp.
+    Returns 404 only for unapproved visits. Sets strict no-store headers.
     """
     req = VisitRequest.query.filter_by(public_reference=public_reference).first_or_404()
 
@@ -285,11 +300,25 @@ def serve_pass_qr(public_reference):
 
     active_cred = req.active_credential or req.qr_credentials.first()
     if not active_cred:
-        abort(404)
+        active_cred = QRService.ensure_active_credential(req)
 
-    img_bytes = QRService.get_qr_image_bytes(active_cred.token_hash)
+    # 1. Try reading pre-generated file from disk
+    img_bytes = None
+    if active_cred:
+        img_bytes = QRService.get_qr_image_bytes(active_cred.token_hash)
+
+    # 2. Dynamic on-the-fly generation fallback: guarantees QR is never broken across containers
     if not img_bytes:
-        abort(404)
+        qr_payload = req.public_reference
+        img_bytes = QRService.generate_qr_image_bytes(qr_payload)
+        if active_cred:
+            try:
+                qr_dir = QRService.get_qr_dir()
+                file_path = qr_dir / f"{active_cred.token_hash}.png"
+                with open(file_path, "wb") as f:
+                    f.write(img_bytes)
+            except Exception:
+                pass
 
     response = Response(img_bytes, mimetype='image/png')
     response.headers['Content-Type'] = 'image/png'

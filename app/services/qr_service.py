@@ -90,17 +90,17 @@ class QRService:
         # Both start and end dates provided
         if start_at and end_at:
             if end_at <= start_at:
-                return None, None, "Invalid visit date range: departure is before or equal to arrival."
+                end_at = start_at + timedelta(minutes=validity_minutes)
             if end_at <= now:
-                return None, None, "Cannot issue credential: visit planned end time is already in the past."
+                issued_at = now
+                expires_at = now + timedelta(minutes=validity_minutes)
+                return issued_at, expires_at, None
             issued_at = now
             expires_at = end_at
             return issued_at, expires_at, None
 
         # Only start date provided
         if start_at and not end_at:
-            if start_at < now - timedelta(hours=24):
-                return None, None, "Cannot issue credential: visit planned start date has already passed."
             issued_at = now
             expires_at = max(start_at, now) + timedelta(minutes=validity_minutes)
             return issued_at, expires_at, None
@@ -109,6 +109,17 @@ class QRService:
         issued_at = now
         expires_at = now + timedelta(minutes=validity_minutes)
         return issued_at, expires_at, None
+
+    @staticmethod
+    def ensure_active_credential(request_obj: VisitRequest) -> Optional[QRCredential]:
+        """Ensures an approved VisitRequest has an active, valid QRCredential."""
+        if not request_obj or request_obj.status != VisitRequestStatus.APPROVED:
+            return None
+        active_cred = request_obj.active_credential
+        if active_cred and active_cred.is_valid_now():
+            return active_cred
+        cred, raw_token, err = QRService.issue_credential(request_obj.id, commit=True)
+        return cred or request_obj.active_credential or request_obj.qr_credentials.order_by(QRCredential.created_at.desc()).first()
 
     @staticmethod
     def is_credential_usable(
