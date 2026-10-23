@@ -210,6 +210,9 @@ def serve_visitor_photo(filename):
         abort(403)
 
     upload_dir = UploadService.get_upload_dir()
+    file_path = os.path.join(upload_dir, filename)
+    if not os.path.exists(file_path):
+        return UploadService.serve_fallback_avatar()
     return send_from_directory(upload_dir, filename)
 
 
@@ -307,8 +310,11 @@ def serve_pass_photo(public_reference):
     """
     req = VisitRequest.query.filter_by(public_reference=public_reference).first_or_404()
     if not req.photo_filename:
-        abort(404)
+        return UploadService.serve_fallback_avatar()
     upload_dir = UploadService.get_upload_dir()
+    file_path = os.path.join(upload_dir, req.photo_filename)
+    if not os.path.exists(file_path):
+        return UploadService.serve_fallback_avatar()
     response = make_response(send_from_directory(upload_dir, req.photo_filename))
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'

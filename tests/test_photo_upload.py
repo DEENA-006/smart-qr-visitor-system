@@ -95,3 +95,17 @@ def test_disguised_text_fails_pillow_verification(app):
         filename, err = UploadService.process_and_save_photo(fs)
         assert filename is None
         assert "validation failed" in err.lower()
+
+
+def test_serverless_upload_dir_uses_tmp(monkeypatch, app):
+    monkeypatch.setenv("VERCEL", "1")
+    with app.app_context():
+        upload_dir = UploadService.get_upload_dir()
+        assert upload_dir.startswith("/tmp") or "tmp" in upload_dir.lower()
+
+
+def test_serve_fallback_avatar():
+    response = UploadService.serve_fallback_avatar()
+    assert response.status_code == 200
+    assert response.mimetype == "image/svg+xml"
+    assert b"<svg" in response.data

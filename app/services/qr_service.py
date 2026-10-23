@@ -37,9 +37,18 @@ class QRService:
     @staticmethod
     def get_qr_dir() -> Path:
         """Returns the filesystem directory used for storing generated QR images."""
-        base_instance = Path(current_app.instance_path) if current_app else Path("instance")
-        qr_dir = base_instance / "uploads" / "qr_codes"
-        qr_dir.mkdir(parents=True, exist_ok=True)
+        is_serverless = bool(os.environ.get('VERCEL') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME') or os.environ.get('LAMBDA_TASK_ROOT'))
+        if is_serverless:
+            qr_dir = Path("/tmp/uploads/qr_codes")
+        else:
+            base_instance = Path(current_app.instance_path) if current_app else Path("instance")
+            qr_dir = base_instance / "uploads" / "qr_codes"
+        try:
+            qr_dir.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            import tempfile
+            qr_dir = Path(tempfile.gettempdir()) / "vms_uploads" / "qr_codes"
+            qr_dir.mkdir(parents=True, exist_ok=True)
         return qr_dir
 
     @staticmethod
@@ -164,8 +173,14 @@ class QRService:
         qr_dir = QRService.get_qr_dir()
         file_path = qr_dir / f"{token_hash}.png"
         img_bytes = QRService.generate_qr_image_bytes(raw_token)
-        with open(file_path, "wb") as f:
-            f.write(img_bytes)
+        try:
+            with open(file_path, "wb") as f:
+                f.write(img_bytes)
+        except OSError:
+            import tempfile
+            file_path = Path(tempfile.gettempdir()) / f"{token_hash}.png"
+            with open(file_path, "wb") as f:
+                f.write(img_bytes)
         return file_path
 
     @staticmethod
@@ -179,6 +194,14 @@ class QRService:
                     return f.read()
             except Exception as e:
                 logger.error(f"Error reading QR image {file_path}: {e}")
+        import tempfile
+        fallback_path = Path(tempfile.gettempdir()) / f"{token_hash}.png"
+        if fallback_path.exists():
+            try:
+                with open(fallback_path, "rb") as f:
+                    return f.read()
+            except Exception as e:
+                logger.error(f"Error reading fallback QR image {fallback_path}: {e}")
         return None
 
     @staticmethod

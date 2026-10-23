@@ -15,9 +15,30 @@ class UploadService:
     @staticmethod
     def get_upload_dir() -> str:
         """Returns the absolute path to visitor photos storage directory."""
-        upload_dir = os.path.join(current_app.instance_path, 'uploads', 'visitor_photos')
-        os.makedirs(upload_dir, exist_ok=True)
+        is_serverless = bool(os.environ.get('VERCEL') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME') or os.environ.get('LAMBDA_TASK_ROOT'))
+        if is_serverless:
+            upload_dir = '/tmp/uploads/visitor_photos'
+        else:
+            base_path = current_app.instance_path if current_app else 'instance'
+            upload_dir = os.path.join(base_path, 'uploads', 'visitor_photos')
+        try:
+            os.makedirs(upload_dir, exist_ok=True)
+        except OSError:
+            import tempfile
+            upload_dir = os.path.join(tempfile.gettempdir(), 'vms_uploads', 'visitor_photos')
+            os.makedirs(upload_dir, exist_ok=True)
         return upload_dir
+
+    @staticmethod
+    def serve_fallback_avatar():
+        """Returns a clean neutral SVG avatar if the stored photo is not present on disk."""
+        from flask import Response
+        svg = """<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="100%" height="100%" fill="#f3f4f6"/>
+            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+        </svg>"""
+        return Response(svg, mimetype='image/svg+xml')
 
     @staticmethod
     def process_and_save_photo(file: FileStorage) -> tuple[str | None, str | None]:
@@ -70,10 +91,17 @@ class UploadService:
 
             # Generate random UUID filename
             filename = f"{uuid.uuid4().hex}.jpg"
-            save_path = os.path.join(UploadService.get_upload_dir(), filename)
+            upload_dir = UploadService.get_upload_dir()
+            save_path = os.path.join(upload_dir, filename)
 
             # Save clean image
-            clean_img.save(save_path, format='JPEG', quality=85, optimize=True)
+            try:
+                clean_img.save(save_path, format='JPEG', quality=85, optimize=True)
+            except OSError:
+                import tempfile
+                fallback_dir = tempfile.gettempdir()
+                save_path = os.path.join(fallback_dir, filename)
+                clean_img.save(save_path, format='JPEG', quality=85, optimize=True)
 
             return filename, None
 

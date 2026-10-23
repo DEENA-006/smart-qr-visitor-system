@@ -9,8 +9,9 @@ from app.routes import main_bp, auth_bp, admin_bp, faculty_bp, security_bp, visi
 
 
 def create_app(config_name: str | None = None) -> Flask:
-    """Application factory for Smart QR Visitor Management System."""
-    app = Flask(__name__)
+    is_serverless = bool(os.environ.get('VERCEL') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME') or os.environ.get('LAMBDA_TASK_ROOT'))
+    instance_path = '/tmp/instance' if is_serverless else None
+    app = Flask(__name__, instance_path=instance_path)
 
     # Determine configuration
     if config_name is None:
