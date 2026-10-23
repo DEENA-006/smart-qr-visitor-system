@@ -38,7 +38,14 @@ class UploadService:
             <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
             <circle cx="12" cy="7" r="4"/>
         </svg>"""
-        return Response(svg, mimetype='image/svg+xml')
+        svg_bytes = svg.encode('utf-8')
+        response = Response(svg_bytes, mimetype='image/svg+xml')
+        response.headers['Content-Type'] = 'image/svg+xml'
+        response.headers['Content-Length'] = str(len(svg_bytes))
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
 
     @staticmethod
     def process_and_save_photo(file: FileStorage) -> tuple[str | None, str | None]:
